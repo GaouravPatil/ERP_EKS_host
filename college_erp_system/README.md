@@ -43,6 +43,23 @@ A comprehensive web-based College Management System built with Django that strea
 
 ## 🚀 Quick Start
 
+### ⚡ Automated Setup (Recommended)
+```bash
+git clone <repository-url>
+cd college_erp_system
+chmod +x setup_dev.sh
+./setup_dev.sh
+```
+
+The setup script will:
+- Create virtual environment
+- Install dependencies  
+- Create .env configuration file
+- Run database migrations
+- Optionally create sample data
+
+### 📋 Manual Setup
+
 ### Prerequisites
 - Python 3.10 or higher
 - pip (Python package installer)

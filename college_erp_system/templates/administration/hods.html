@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Head of Departments - MIT-WPU ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hod-card {
+        border: 1px solid #e0e6ed;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
+    
+    .hod-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+    
+    .hod-header {
+        background: rgba(255,255,255,0.1);
+        border-radius: 12px 12px 0 0;
+        backdrop-filter: blur(10px);
+    }
+    
+    .dept-badge {
+        background: rgba(255,255,255,0.2);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 20px;
+        font-size: 0.8rem;
+        padding: 4px 12px;
+    }
+    
+    .hod-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        color: white;
+        margin: 0 auto 15px;
+    }
+    
+    .stats-item {
+        background: rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        margin: 5px;
+    }
+    
+    .stats-number {
+        font-size: 1.8rem;
+        font-weight: bold;
+        display: block;
+    }
+    
+    .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+    
+    .no-hod-card {
+        border: 2px dashed #dc3545;
+        background: rgba(220, 53, 69, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+    }
+    
+    .section-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+    }
+    
+    .contact-info {
+        background: rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="section-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-1">
+                    <i class="fas fa-user-tie me-3"></i>Head of Departments
+                </h2>
+                <p class="mb-0">MIT-WPU Academic Leadership Directory</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="stats-number">{{ departments_with_hods_count }}</div>
+                        <div class="stats-label">HODs Assigned</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stats-number">{{ total_departments }}</div>
+                        <div class="stats-label">Total Departments</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HODs Grid -->
+    {% if hod_data %}
+    <div class="row">
+        {% for hod in hod_data %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card hod-card h-100">
+                <div class="card-header hod-header text-center">
+                    <span class="dept-badge">{{ hod.department.code }}</span>
+                    <div class="hod-avatar mt-3">
+                        {{ hod.hod_user.first_name.0 }}{{ hod.hod_user.last_name.0 }}
+                    </div>
+                    <h5 class="mb-1">{{ hod.hod_user.get_full_name }}</h5>
+                    <p class="mb-0 opacity-75">
+                        {% if hod.teacher_profile %}
+                            {{ hod.teacher_profile.designation }}
+                        {% else %}
+                            Head of Department
+                        {% endif %}
+                    </p>
+                </div>
+                
+                <div class="card-body">
+                    <h6 class="card-title mb-3">{{ hod.department.name }}</h6>
+                    
+                    {% if hod.teacher_profile %}
+                    <div class="contact-info">
+                        <div class="row">
+                            <div class="col-12 mb-2">
+                                <small><i class="fas fa-graduation-cap me-2"></i>{{ hod.teacher_profile.qualification|title }}</small>
+                            </div>
+                            <div class="col-12 mb-2">
+                                <small><i class="fas fa-calendar me-2"></i>{{ hod.teacher_profile.experience_years }} years experience</small>
+                            </div>
+                            <div class="col-12 mb-2">
+                                <small><i class="fas fa-door-open me-2"></i>{{ hod.teacher_profile.office_room }}</small>
+                            </div>
+                            <div class="col-12">
+                                <small><i class="fas fa-clock me-2"></i>{{ hod.teacher_profile.office_hours }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row mt-3">
+                        <div class="col-4">
+                            <div class="stats-item">
+                                <span class="stats-number">{{ hod.total_teachers }}</span>
+                                <span class="stats-label">Faculty</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stats-item">
+                                <span class="stats-number">{{ hod.total_students }}</span>
+                                <span class="stats-label">Students</span>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stats-item">
+                                <span class="stats-number">{{ hod.total_courses }}</span>
+                                <span class="stats-label">Courses</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-transparent border-0">
+                    <div class="row">
+                        <div class="col-12">
+                            <small class="opacity-75">
+                                <i class="fas fa-envelope me-2"></i>{{ hod.hod_user.email }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Departments without HODs -->
+    {% if departments_without_hods %}
+    <div class="mt-5">
+        <h4 class="text-danger mb-3">
+            <i class="fas fa-exclamation-triangle me-2"></i>Departments Pending HOD Assignment
+        </h4>
+        <div class="row">
+            {% for dept in departments_without_hods %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="no-hod-card">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-building text-danger me-3 fa-2x"></i>
+                        <div>
+                            <h6 class="mb-1 text-danger">{{ dept.name }}</h6>
+                            <small class="text-muted">Code: {{ dept.code }}</small>
+                            <p class="mb-0 mt-1">
+                                <small class="text-danger">
+                                    <i class="fas fa-user-times me-1"></i>No HOD Assigned
+                                </small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Summary Card -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center py-4">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-primary">
+                                <i class="fas fa-university fa-2x mb-2"></i>
+                                <h4>{{ total_departments }}</h4>
+                                <p class="text-muted mb-0">Total Schools</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-success">
+                                <i class="fas fa-user-tie fa-2x mb-2"></i>
+                                <h4>{{ departments_with_hods_count }}</h4>
+                                <p class="text-muted mb-0">HODs Assigned</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-info">
+                                <i class="fas fa-percentage fa-2x mb-2"></i>
+                                <h4>{% widthratio departments_with_hods_count total_departments 100 %}%</h4>
+                                <p class="text-muted mb-0">Coverage</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-warning">
+                                <i class="fas fa-clock fa-2x mb-2"></i>
+                                <h4>{{ departments_without_hods|length }}</h4>
+                                <p class="text-muted mb-0">Pending</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add any interactive features if needed
+    document.addEventListener('DOMContentLoaded', function() {
+        // Animation for cards on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+        
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+        
+        document.querySelectorAll('.hod-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.6s ease';
+            observer.observe(card);
+        });
+    });
+</script>
+{% endblock %}

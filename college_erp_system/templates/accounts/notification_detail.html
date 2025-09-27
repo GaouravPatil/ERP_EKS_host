@@ -1,0 +1,376 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ notification.title }} - Notification - MIT-WPU College ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-header {
+        background: linear-gradient(135deg, var(--mitwpu-primary), var(--mitwpu-secondary));
+        color: white;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+    
+    .priority-badge-large {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .notification-content {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        border-left: 4px solid var(--mitwpu-primary);
+        padding: 2rem;
+        margin: 2rem 0;
+        line-height: 1.8;
+        font-size: 1.1rem;
+    }
+    
+    .sender-info {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 1.5rem;
+    }
+    
+    .read-status {
+        background: linear-gradient(135deg, var(--mitwpu-success), #20c997);
+        color: white;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .new-notification {
+        background: linear-gradient(135deg, var(--mitwpu-warning), #f39c12);
+    }
+    
+    .meta-info {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .meta-item {
+        padding: 1rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .meta-item:last-child {
+        border-bottom: none;
+    }
+    
+    .meta-item i {
+        color: var(--mitwpu-primary);
+        width: 20px;
+        text-align: center;
+        margin-right: 0.5rem;
+    }
+    
+    .action-buttons {
+        position: sticky;
+        top: 20px;
+        z-index: 100;
+    }
+    
+    .back-button {
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    @media (max-width: 768px) {
+        .notification-content {
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .action-buttons {
+            position: relative;
+            top: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back Navigation -->
+    <div class="mb-4">
+        <a href="{% url 'accounts:notifications' %}" class="btn btn-outline-secondary back-button">
+            <i class="fas fa-arrow-left"></i> Back to Notifications
+        </a>
+    </div>
+
+    <!-- Read Status Alert -->
+    {% if is_new %}
+    <div class="alert alert-success read-status new-notification">
+        <i class="fas fa-star"></i> 
+        <strong>New notification!</strong> This notification has been marked as read.
+    </div>
+    {% elif read_record %}
+    <div class="alert alert-info read-status">
+        <i class="fas fa-check-circle"></i> 
+        <strong>Previously read</strong> on {{ read_record.read_at|date:"M d, Y \a\t H:i" }}
+    </div>
+    {% endif %}
+
+    <!-- Notification Header -->
+    <div class="notification-header p-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-3">{{ notification.title }}</h1>
+                
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                    {% if notification.priority == 'high' %}
+                        <span class="badge bg-danger priority-badge-large">
+                            <i class="fas fa-exclamation-triangle"></i> High Priority
+                        </span>
+                    {% elif notification.priority == 'medium' %}
+                        <span class="badge bg-warning priority-badge-large">
+                            <i class="fas fa-minus"></i> Medium Priority
+                        </span>
+                    {% else %}
+                        <span class="badge bg-success priority-badge-large">
+                            <i class="fas fa-check"></i> Low Priority
+                        </span>
+                    {% endif %}
+                    
+                    <span class="badge bg-light text-dark priority-badge-large">
+                        <i class="fas fa-calendar"></i> {{ notification.created_at|date:"M d, Y" }}
+                    </span>
+                    
+                    <span class="badge bg-light text-dark priority-badge-large">
+                        <i class="fas fa-clock"></i> {{ notification.created_at|date:"H:i" }}
+                    </span>
+                </div>
+                
+                <p class="mb-0 opacity-75">
+                    <i class="fas fa-user"></i> From {{ notification.sender.get_full_name }}
+                    {% if notification.sender.user_type %}
+                        ({{ notification.sender.get_user_type_display }})
+                    {% endif %}
+                </p>
+            </div>
+            
+            <div class="col-md-4 text-center text-md-end">
+                <div class="action-buttons">
+                    <div class="btn-group-vertical d-grid gap-2">
+                        <button class="btn btn-light" onclick="window.print()">
+                            <i class="fas fa-print"></i> Print
+                        </button>
+                        <button class="btn btn-outline-light" onclick="shareNotification()">
+                            <i class="fas fa-share"></i> Share
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Notification Content -->
+            <div class="notification-content">
+                {{ notification.message|linebreaks }}
+            </div>
+            
+            {% if notification.expires_at %}
+            <div class="alert alert-warning">
+                <i class="fas fa-hourglass-end"></i>
+                <strong>Expires:</strong> {{ notification.expires_at|date:"l, F d, Y \a\t H:i" }}
+                
+                {% now "Y-m-d H:i:s" as current_time %}
+                {% if notification.expires_at|date:"Y-m-d H:i:s" < current_time %}
+                    <span class="badge bg-danger ms-2">EXPIRED</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Sender Information -->
+            <div class="sender-info mb-4">
+                <h5 class="mb-3">
+                    <i class="fas fa-user text-mitwpu-primary"></i> Sender Information
+                </h5>
+                
+                <div class="d-flex align-items-center mb-3">
+                    {% if notification.sender.profile_picture %}
+                        <img src="{{ notification.sender.profile_picture.url }}" 
+                             alt="{{ notification.sender.get_full_name }}" 
+                             class="rounded-circle me-3" 
+                             style="width: 50px; height: 50px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-mitwpu-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
+                             style="width: 50px; height: 50px;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <div>
+                        <h6 class="mb-0">{{ notification.sender.get_full_name }}</h6>
+                        <small class="text-muted">
+                            {% if notification.sender.user_type == 'admin' %}
+                                <i class="fas fa-user-shield"></i> Administrator
+                            {% elif notification.sender.user_type == 'teacher' %}
+                                <i class="fas fa-chalkboard-teacher"></i> Teacher
+                            {% else %}
+                                <i class="fas fa-user"></i> {{ notification.sender.get_user_type_display }}
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+                
+                {% if notification.sender.email %}
+                <div class="mb-2">
+                    <i class="fas fa-envelope text-muted"></i> {{ notification.sender.email }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Notification Details -->
+            <div class="meta-info">
+                <h5 class="p-3 mb-0 border-bottom">
+                    <i class="fas fa-info-circle text-mitwpu-primary"></i> Details
+                </h5>
+                
+                <div class="meta-item">
+                    <i class="fas fa-calendar-plus"></i>
+                    <strong>Created:</strong><br>
+                    <small>{{ notification.created_at|date:"l, F d, Y \a\t H:i" }}</small>
+                </div>
+                
+                <div class="meta-item">
+                    <i class="fas fa-users"></i>
+                    <strong>Sent to:</strong><br>
+                    <small>
+                        {% if notification.recipient_type == 'all' %}
+                            All users in the system
+                        {% elif notification.recipient_type == 'students' %}
+                            All students
+                        {% elif notification.recipient_type == 'teachers' %}
+                            All teachers
+                        {% else %}
+                            Specific selected users
+                        {% endif %}
+                    </small>
+                </div>
+                
+                <div class="meta-item">
+                    <i class="fas fa-flag"></i>
+                    <strong>Priority:</strong><br>
+                    <small>
+                        {% if notification.priority == 'high' %}
+                            <span class="text-danger">High Priority</span>
+                        {% elif notification.priority == 'medium' %}
+                            <span class="text-warning">Medium Priority</span>
+                        {% else %}
+                            <span class="text-success">Low Priority</span>
+                        {% endif %}
+                    </small>
+                </div>
+                
+                {% if read_record %}
+                <div class="meta-item">
+                    <i class="fas fa-eye"></i>
+                    <strong>Read on:</strong><br>
+                    <small>{{ read_record.read_at|date:"l, F d, Y \a\t H:i" }}</small>
+                </div>
+                {% endif %}
+                
+                {% if notification.expires_at %}
+                <div class="meta-item">
+                    <i class="fas fa-hourglass-end"></i>
+                    <strong>Expires:</strong><br>
+                    <small>{{ notification.expires_at|date:"l, F d, Y \a\t H:i" }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function shareNotification() {
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ notification.title|escapejs }}',
+            text: '{{ notification.message|truncatewords:20|escapejs }}',
+            url: window.location.href
+        }).then(() => {
+            console.log('Notification shared successfully');
+        }).catch((error) => {
+            console.log('Error sharing:', error);
+            fallbackShare();
+        });
+    } else {
+        fallbackShare();
+    }
+}
+
+function fallbackShare() {
+    // Fallback for browsers that don't support Web Share API
+    const url = window.location.href;
+    const title = '{{ notification.title|escapejs }}';
+    
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(`${title} - ${url}`).then(() => {
+            showToast('Notification link copied to clipboard!', 'success');
+        });
+    } else {
+        // Even older fallback
+        const textArea = document.createElement("textarea");
+        textArea.value = `${title} - ${url}`;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showToast('Notification link copied to clipboard!', 'success');
+        } catch (err) {
+            showToast('Could not copy link. Please copy manually.', 'error');
+        }
+        document.body.removeChild(textArea);
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type} position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+            ${message}
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// Print styles
+const printStyles = `
+    <style type="text/css" media="print">
+        body * { visibility: hidden; }
+        .notification-header, .notification-header *, 
+        .notification-content, .notification-content *,
+        .sender-info, .sender-info *,
+        .meta-info, .meta-info * { visibility: visible; }
+        .notification-header { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        .action-buttons, .back-button { display: none !important; }
+        @page { margin: 1in; }
+    </style>
+`;
+
+document.head.insertAdjacentHTML('beforeend', printStyles);
+</script>
+{% endblock %}

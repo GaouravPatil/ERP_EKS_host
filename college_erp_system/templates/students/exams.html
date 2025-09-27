@@ -1,13 +1,254 @@
 {% extends 'base.html' %}
 
-{% block title %}Exams{% endblock %}
+{% block title %}My Exams{% endblock %}
+
+{% block extra_css %}
+<style>
+    .exam-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+    
+    .exam-card {
+        background: white;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
+    
+    .exam-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    
+    .exam-type-badge {
+        border-radius: 25px;
+        padding: 8px 16px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.75rem;
+    }
+    
+    .upcoming-exam {
+        border-left: 4px solid #28a745;
+    }
+    
+    .past-exam {
+        border-left: 4px solid #6c757d;
+    }
+    
+    .exam-date {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        color: #333;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        margin-right: 20px;
+        min-width: 120px;
+    }
+    
+    .exam-date h4 {
+        margin: 0;
+        font-weight: bold;
+    }
+    
+    .exam-date small {
+        opacity: 0.8;
+    }
+    
+    .no-exams {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 60px 20px;
+        text-align: center;
+    }
+    
+    @media (max-width: 768px) {
+        .exam-date {
+            margin-right: 0;
+            margin-bottom: 15px;
+            min-width: auto;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <h1 class="h2 mb-4">Exams</h1>
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i>
-        Exam management features coming soon!
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="exam-header text-center">
+        <h1 class="h2 mb-2">
+            <i class="bi bi-calendar-event"></i> My Exams
+        </h1>
+        <p class="mb-0 opacity-75">
+            <i class="bi bi-info-circle"></i> 
+            Exam schedule and details for {{ student.user.get_full_name }} ({{ student.roll_number }})
+        </p>
+    </div>
+    
+    <!-- Upcoming Exams Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card exam-card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-plus"></i> Upcoming Exams
+                        <span class="badge bg-light text-success ms-2">{{ upcoming_exams.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_exams %}
+                        {% for exam in upcoming_exams %}
+                        <div class="exam-card upcoming-exam">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3">
+                                        <div class="exam-date">
+                                            <h4>{{ exam.date|date:"d" }}</h4>
+                                            <small>{{ exam.date|date:"M Y" }}</small>
+                                            <br>
+                                            <small><i class="bi bi-clock"></i> {{ exam.date|date:"g:i A" }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title text-primary mb-1">{{ exam.name }}</h5>
+                                            <span class="exam-type-badge bg-primary text-white">{{ exam.get_exam_type_display }}</span>
+                                        </div>
+                                        <h6 class="text-secondary mb-2">{{ exam.subject.course.name }} ({{ exam.subject.course.code }})</h6>
+                                        <div class="row text-muted small">
+                                            <div class="col-md-4">
+                                                <i class="bi bi-clock-history"></i> Duration: {{ exam.duration }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <i class="bi bi-clipboard-check"></i> Total Marks: {{ exam.total_marks }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <i class="bi bi-check-circle"></i> Pass Marks: {{ exam.pass_marks }}
+                                            </div>
+                                        </div>
+                                        {% if exam.instructions %}
+                                        <div class="mt-2">
+                                            <small class="text-info">
+                                                <i class="bi bi-info-circle"></i> {{ exam.instructions|truncatechars:100 }}
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted mt-3">No Upcoming Exams</h5>
+                            <p class="text-muted">You don't have any scheduled exams at the moment.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Past Exams Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card exam-card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calendar-check"></i> Past Exams
+                        <span class="badge bg-light text-secondary ms-2">{{ past_exams.count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if past_exams %}
+                        {% for exam in past_exams|slice:":10" %}
+                        <div class="exam-card past-exam">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3">
+                                        <div class="exam-date" style="background: linear-gradient(135deg, #d4d4aa 0%, #eeeeee 100%);">
+                                            <h4>{{ exam.date|date:"d" }}</h4>
+                                            <small>{{ exam.date|date:"M Y" }}</small>
+                                            <br>
+                                            <small><i class="bi bi-clock"></i> {{ exam.date|date:"g:i A" }}</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title text-secondary mb-1">{{ exam.name }}</h5>
+                                            <span class="exam-type-badge bg-secondary text-white">{{ exam.get_exam_type_display }}</span>
+                                        </div>
+                                        <h6 class="text-muted mb-2">{{ exam.subject.course.name }} ({{ exam.subject.course.code }})</h6>
+                                        <div class="row text-muted small">
+                                            <div class="col-md-4">
+                                                <i class="bi bi-clock-history"></i> Duration: {{ exam.duration }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <i class="bi bi-clipboard-check"></i> Total Marks: {{ exam.total_marks }}
+                                            </div>
+                                            <div class="col-md-4">
+                                                <i class="bi bi-check-circle"></i> Pass Marks: {{ exam.pass_marks }}
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <a href="{% url 'students:results' %}" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-trophy"></i> View Results
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if past_exams.count > 10 %}
+                        <div class="text-center mt-3">
+                            <small class="text-muted">Showing recent 10 exams. Total: {{ past_exams.count }} past exams.</small>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted mt-3">No Past Exams</h5>
+                            <p class="text-muted">You haven't taken any exams yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card exam-card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-3">Quick Actions</h6>
+                    <div class="d-flex justify-content-center gap-3 flex-wrap">
+                        <a href="{% url 'students:dashboard' %}" class="btn btn-primary">
+                            <i class="bi bi-house"></i> Dashboard
+                        </a>
+                        <a href="{% url 'students:results' %}" class="btn btn-success">
+                            <i class="bi bi-trophy"></i> View Results
+                        </a>
+                        <a href="{% url 'students:timetable' %}" class="btn btn-info">
+                            <i class="bi bi-table"></i> Timetable
+                        </a>
+                        <a href="{% url 'students:attendance' %}" class="btn btn-warning">
+                            <i class="bi bi-check-circle"></i> Attendance
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

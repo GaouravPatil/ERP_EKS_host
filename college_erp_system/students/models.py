@@ -2,6 +2,18 @@ from django.db import models
 from django.conf import settings
 from academics.models import Class, Department
 
+
+def get_notification_type_choices():
+    """Get notification type choices from database"""
+    from college_erp.models import Choice
+    return Choice.get_choices_for_category('notification_types')
+
+
+def get_target_audience_choices():
+    """Get target audience choices from database"""
+    from college_erp.models import Choice
+    return Choice.get_choices_for_category('target_audience')
+
 class Student(models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -36,25 +48,12 @@ class Student(models.Model):
         return self.student_class.semester if self.student_class else None
 
 class Notification(models.Model):
-    NOTIFICATION_TYPES = [
-        ('general', 'General'),
-        ('academic', 'Academic'),
-        ('exam', 'Exam'),
-        ('fee', 'Fee'),
-        ('event', 'Event'),
-    ]
-    
     title = models.CharField(max_length=200)
     message = models.TextField()
-    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES)
+    notification_type = models.CharField(max_length=20, choices=get_notification_type_choices)
     target_audience = models.CharField(
         max_length=20,
-        choices=[
-            ('all', 'All Students'),
-            ('class', 'Specific Class'),
-            ('department', 'Specific Department'),
-            ('individual', 'Individual Student'),
-        ],
+        choices=get_target_audience_choices,
         default='all'
     )
     target_class = models.ForeignKey(

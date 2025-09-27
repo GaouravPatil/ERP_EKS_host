@@ -1,13 +1,19 @@
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from college_erp.config import InstitutionConfig, AppConfig
 
-# Create your views here.
+@login_required
 def index(request):
-    login = request.user
-    College_name = "MIT World Peace University"
-
-    welcome_message = "Welcome to the ERP System"
-    login.username = "Rival"
-    login.is_authenticated: True
-    user_role = "Administrator"
-
-    return render(request, 'index.html', {'login': login, 'College_name': College_name, 'welcome_message': welcome_message, 'user_role': user_role, 'admin': True, 'user_permissions': ['add_user', 'delete_user', 'view_reports']})
+    """Academic module main index view"""
+    user = request.user
+    
+    context = {
+        'user': user,
+        'institution_name': InstitutionConfig.NAME,
+        'welcome_message': f"Welcome to {InstitutionConfig.NAME} Academic System",
+        'user_permissions': AppConfig.DEFAULT_STUDENT_PERMISSIONS if user.is_student 
+                          else AppConfig.DEFAULT_TEACHER_PERMISSIONS if user.is_teacher 
+                          else []
+    }
+    
+    return render(request, 'academics/index.html', context)

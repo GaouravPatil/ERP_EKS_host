@@ -1,4 +1,19 @@
+# Core Django
 Django==5.2.6
 djangorestframework==3.16.1
+
+# Database support (optional)
+dj-database-url==2.2.0
+psycopg2-binary==2.9.9
+
+# Image handling
 Pillow==11.3.0
+
+# Environment configuration
 python-decouple==3.8
+
+# Production server (optional)
+gunicorn==23.0.0
+
+# Security and utilities
+django-cors-headers==4.6.0

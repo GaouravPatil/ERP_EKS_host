@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+
+{% block title %}User Profile - MIT-WPU College ERP{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">User Profile</h1>
+                    <p class="mb-0 text-muted">Manage user details and account settings</p>
+                </div>
+                <a href="{% url 'administration:users' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Users
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- User Basic Info -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <div class="avatar-lg mx-auto mb-3">
+                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" 
+                             style="width: 80px; height: 80px;">
+                            <i class="bi bi-person-fill text-white" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                    <h5 class="card-title mb-1">{{ profile_user.get_full_name|default:profile_user.username }}</h5>
+                    <p class="card-text text-muted mb-2">{{ profile_user.email }}</p>
+                    {% if profile_user.is_staff %}
+                        <span class="badge bg-danger mb-2">Staff</span>
+                    {% endif %}
+                    {% if profile_user.is_superuser %}
+                        <span class="badge bg-warning mb-2">Superuser</span>
+                    {% endif %}
+                    <span class="badge bg-{% if profile_user.is_active %}success{% else %}danger{% endif %} mb-3">
+                        {% if profile_user.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'administration:change_user_password' profile_user.id %}" 
+                           class="btn btn-warning btn-sm">
+                            <i class="bi bi-key"></i> Change Password
+                        </a>
+                        <button type="button" class="btn btn-primary btn-sm" 
+                                onclick="resetToDefaultPassword()">
+                            <i class="bi bi-arrow-clockwise"></i> Reset to Default
+                        </button>
+                        {% if profile_user != request.user %}
+                            <form method="post" action="{% url 'administration:toggle_user_status' profile_user.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-{% if profile_user.is_active %}danger{% else %}success{% endif %} btn-sm w-100"
+                                        onclick="return confirm('Are you sure you want to {% if profile_user.is_active %}deactivate{% else %}activate{% endif %} this user?');">
+                                    <i class="bi bi-{% if profile_user.is_active %}pause-circle{% else %}play-circle{% endif %}"></i>
+                                    {% if profile_user.is_active %}Deactivate{% else %}Activate{% endif %} User
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Details Form -->
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-gear"></i> User Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+                                {{ form.username }}
+                                {% if form.username.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.username.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.email.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name</label>
+                                {{ form.first_name }}
+                                {% if form.first_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.first_name.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name</label>
+                                {{ form.last_name }}
+                                {% if form.last_name.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.last_name.errors.0 }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <div class="form-check">
+                                    {{ form.is_active }}
+                                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                        Account is active
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if request.user.is_superuser %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    {{ form.is_staff }}
+                                    <label class="form-check-label" for="{{ form.is_staff.id_for_label }}">
+                                        Staff status
+                                    </label>
+                                    <small class="form-text text-muted">Designates whether the user can log into admin site.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    {{ form.is_superuser }}
+                                    <label class="form-check-label" for="{{ form.is_superuser.id_for_label }}">
+                                        Superuser status
+                                    </label>
+                                    <small class="form-text text-muted">Designates that this user has all permissions.</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{% url 'administration:users' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Update User
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- User Profile Info -->
+            {% if profile_user.student_profile or profile_user.teacher_profile %}
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle"></i> Profile Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if profile_user.student_profile %}
+                        <div class="row">
+                            <div class="col-sm-3"><strong>Role:</strong></div>
+                            <div class="col-sm-9">Student</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-3"><strong>Student ID:</strong></div>
+                            <div class="col-sm-9">{{ profile_user.student_profile.student_id|default:"Not set" }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-3"><strong>Course:</strong></div>
+                            <div class="col-sm-9">{{ profile_user.student_profile.course|default:"Not assigned" }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-3"><strong>Semester:</strong></div>
+                            <div class="col-sm-9">{{ profile_user.student_profile.semester|default:"Not set" }}</div>
+                        </div>
+                    {% elif profile_user.teacher_profile %}
+                        <div class="row">
+                            <div class="col-sm-3"><strong>Role:</strong></div>
+                            <div class="col-sm-9">Teacher</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-3"><strong>Employee ID:</strong></div>
+                            <div class="col-sm-9">{{ profile_user.teacher_profile.employee_id|default:"Not set" }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-3"><strong>Department:</strong></div>
+                            <div class="col-sm-9">{{ profile_user.teacher_profile.department|default:"Not assigned" }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-3"><strong>Designation:</strong></div>
+                            <div class="col-sm-9">{{ profile_user.teacher_profile.designation|default:"Not set" }}</div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Account Details -->
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history"></i> Account Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-3"><strong>Date Joined:</strong></div>
+                        <div class="col-sm-9">{{ profile_user.date_joined|date:"F j, Y g:i A" }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-3"><strong>Last Login:</strong></div>
+                        <div class="col-sm-9">
+                            {% if profile_user.last_login %}
+                                {{ profile_user.last_login|date:"F j, Y g:i A" }}
+                            {% else %}
+                                Never logged in
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-3"><strong>User ID:</strong></div>
+                        <div class="col-sm-9">{{ profile_user.id }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reset Password to Default</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to reset <strong>{{ profile_user.username }}</strong>'s password to the default password?</p>
+                <p class="text-muted">The default password will be: <code>{{ profile_user.username }}123</code></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'administration:reset_user_password' profile_user.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning">Reset Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function resetToDefaultPassword() {
+    var resetModal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    resetModal.show();
+}
+</script>
+{% endblock %}

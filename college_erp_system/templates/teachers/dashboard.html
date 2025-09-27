@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Dashboard - MIT-WPU College ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card {
+    transition: transform 0.2s ease-in-out;
+    border-left: 4px solid #007bff;
+}
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15)!important;
+}
+.stat-card.primary { border-left-color: #007bff; }
+.stat-card.success { border-left-color: #28a745; }
+.stat-card.warning { border-left-color: #ffc107; }
+.stat-card.danger { border-left-color: #dc3545; }
+.stat-card.info { border-left-color: #17a2b8; }
+
+.schedule-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.notification-item {
+    border-left: 3px solid #007bff;
+    transition: background-color 0.2s;
+}
+.notification-item:hover {
+    background-color: #f8f9fa;
+}
+.notification-item.urgent {
+    border-left-color: #dc3545;
+    background-color: #fff5f5;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">Teacher Dashboard</h1>
+                    <p class="mb-0 text-muted">Welcome back, {{ teacher.user.get_full_name|default:teacher.user.username }}!</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted d-block">{{ today|date:"l, F j, Y" }}</small>
+                    <small class="text-muted">Employee ID: {{ teacher.employee_id }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card primary shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title text-muted mb-1">Total Classes</h6>
+                            <h3 class="mb-0">{{ taught_subjects.count }}</h3>
+                        </div>
+                        <div class="text-primary">
+                            <i class="bi bi-book" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card success shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title text-muted mb-1">Total Students</h6>
+                            <h3 class="mb-0">{{ total_students }}</h3>
+                        </div>
+                        <div class="text-success">
+                            <i class="bi bi-people" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card warning shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title text-muted mb-1">Pending Results</h6>
+                            <h3 class="mb-0">{{ pending_results }}</h3>
+                        </div>
+                        <div class="text-warning">
+                            <i class="bi bi-clipboard-check" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card info shadow h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="card-title text-muted mb-1">Today's Attendance</h6>
+                            <h3 class="mb-0">{{ today_attendance.present|default:0 }}/{{ today_attendance.present|add:today_attendance.absent|default:0 }}</h3>
+                        </div>
+                        <div class="text-info">
+                            <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Today's Schedule -->
+        <div class="col-lg-8">
+            <!-- Next Class Alert -->
+            {% if next_class %}
+            <div class="alert alert-info shadow-sm mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-clock-fill me-3" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">Next Class</h6>
+                        <p class="mb-0">
+                            <strong>{{ next_class.subject.course.name }}</strong> - {{ next_class.class_assigned }}
+                            <br>
+                            <small class="text-muted">
+                                Room {{ next_class.room_number|default:"TBA" }} | 
+                                {{ next_class.time_slot.start_time|time:"g:i A" }} - {{ next_class.time_slot.end_time|time:"g:i A" }}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Today's Schedule Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header schedule-card">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-calendar-day"></i> Today's Schedule
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if today_classes %}
+                        <div class="row">
+                            {% for class in today_classes %}
+                            <div class="col-md-6 mb-3">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="mb-0">{{ class.subject.course.name }}</h6>
+                                        <span class="badge bg-primary">{{ class.time_slot.start_time|time:"g:i A" }}</span>
+                                    </div>
+                                    <p class="text-muted mb-1">
+                                        <i class="bi bi-people"></i> {{ class.class_assigned }}
+                                    </p>
+                                    <p class="text-muted mb-1">
+                                        <i class="bi bi-geo-alt"></i> Room {{ class.room_number|default:"TBA" }}
+                                    </p>
+                                    <p class="text-muted mb-0">
+                                        <i class="bi bi-clock"></i> {{ class.time_slot.start_time|time:"g:i A" }} - {{ class.time_slot.end_time|time:"g:i A" }}
+                                    </p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                            <h5 class="text-muted mt-3">No classes scheduled for today</h5>
+                            <p class="text-muted">Enjoy your free day!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightning"></i> Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <a href="{% url 'teachers:attendance' %}" class="btn btn-outline-primary btn-lg w-100">
+                                <i class="bi bi-check-square"></i>
+                                <span class="d-block mt-1">Mark Attendance</span>
+                            </a>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <a href="{% url 'teachers:grades' %}" class="btn btn-outline-success btn-lg w-100">
+                                <i class="bi bi-award"></i>
+                                <span class="d-block mt-1">Manage Grades</span>
+                            </a>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <a href="{% url 'teachers:timetable' %}" class="btn btn-outline-info btn-lg w-100">
+                                <i class="bi bi-table"></i>
+                                <span class="d-block mt-1">View Timetable</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Recent Notifications -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-bell"></i> Recent Notifications
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_notifications %}
+                        {% for notification in recent_notifications %}
+                        <div class="notification-item p-3 {% if notification.is_urgent %}urgent{% endif %}">
+                            <h6 class="mb-1">{{ notification.title }}</h6>
+                            <p class="mb-1 small">{{ notification.message|truncatewords:15 }}</p>
+                            <small class="text-muted">
+                                {{ notification.created_at|timesince }} ago
+                                {% if notification.is_urgent %}
+                                    <span class="badge bg-danger ms-1">Urgent</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                        {% if not forloop.last %}<hr class="my-0">{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-bell-slash text-muted"></i>
+                            <p class="text-muted mb-0">No recent notifications</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Upcoming Exams -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-calendar-event"></i> Upcoming Exams
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if upcoming_exams %}
+                        {% for exam in upcoming_exams %}
+                        <div class="p-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ exam.name }}</h6>
+                                    <p class="mb-1 small text-muted">{{ exam.subject.course.name }}</p>
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar"></i> {{ exam.date|date:"M j, Y" }}
+                                    </small>
+                                </div>
+                                <span class="badge bg-warning">{{ exam.get_exam_type_display }}</span>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr class="my-0">{% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x text-muted"></i>
+                            <p class="text-muted mb-0">No upcoming exams</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Profile Summary -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-person"></i> Profile Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="bg-primary rounded-circle mx-auto d-flex align-items-center justify-content-center mb-2" 
+                             style="width: 60px; height: 60px;">
+                            <i class="bi bi-person-fill text-white" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h6 class="mb-0">{{ teacher.user.get_full_name|default:teacher.user.username }}</h6>
+                        <small class="text-muted">{{ teacher.designation }}</small>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h6 class="text-primary mb-0">{{ teacher.experience_years }}</h6>
+                                <small class="text-muted">Years Exp.</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h6 class="text-success mb-0">{{ teacher.department.name }}</h6>
+                            <small class="text-muted">Department</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <a href="{% url 'accounts:profile' %}" class="btn btn-outline-primary btn-sm w-100">
+                            <i class="bi bi-gear"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh notifications every 5 minutes
+setInterval(function() {
+    // You can implement AJAX refresh for notifications here
+}, 300000);
+
+// Initialize tooltips
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+});
+</script>
+{% endblock %}

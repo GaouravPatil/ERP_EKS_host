@@ -1,0 +1,487 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Send Notification - MIT-WPU Administration{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-form {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .form-card {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        border: none;
+        border-radius: 15px;
+    }
+    
+    .form-header {
+        background: linear-gradient(135deg, var(--mitwpu-primary), var(--mitwpu-secondary));
+        color: white;
+        border-radius: 15px 15px 0 0;
+    }
+    
+    .priority-selector {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .priority-option {
+        flex: 1;
+        min-width: 100px;
+    }
+    
+    .priority-option input[type="radio"] {
+        display: none;
+    }
+    
+    .priority-option label {
+        display: block;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    
+    .priority-option input[type="radio"]:checked + label {
+        border-color: var(--mitwpu-primary);
+        background-color: var(--mitwpu-primary);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    .recipient-type-selector .form-check {
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .recipient-type-selector .form-check:hover {
+        border-color: var(--mitwpu-primary);
+        background-color: #f8f9ff;
+    }
+    
+    .recipient-type-selector .form-check-input:checked {
+        background-color: var(--mitwpu-primary);
+        border-color: var(--mitwpu-primary);
+    }
+    
+    .specific-recipients {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    .recipient-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .recipient-group h6 {
+        color: var(--mitwpu-primary);
+        border-bottom: 2px solid var(--mitwpu-primary);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .user-checkbox {
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 5px;
+        transition: background-color 0.3s ease;
+    }
+    
+    .user-checkbox:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .character-counter {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .character-counter.warning {
+        color: var(--mitwpu-warning);
+    }
+    
+    .character-counter.danger {
+        color: var(--mitwpu-danger);
+    }
+    
+    .preview-section {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        border: 2px dashed #dee2e6;
+        padding: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .preview-notification {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        border-left: 4px solid var(--mitwpu-primary);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="notification-form">
+        <!-- Back Button -->
+        <div class="mb-4">
+            <a href="{% url 'administration:notifications' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Notifications
+            </a>
+        </div>
+
+        <!-- Form Card -->
+        <div class="card form-card">
+            <div class="card-header form-header">
+                <h3 class="mb-0">
+                    <i class="fas fa-paper-plane"></i> Send New Notification
+                </h3>
+                <p class="mb-0 mt-2 opacity-75">Compose and send notifications to students and teachers</p>
+            </div>
+            
+            <div class="card-body p-4">
+                <form method="post" id="notificationForm">
+                    {% csrf_token %}
+                    
+                    <!-- Title Field -->
+                    <div class="mb-4">
+                        <label for="title" class="form-label fw-bold">
+                            <i class="fas fa-heading"></i> Notification Title *
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="title" 
+                               name="title" required maxlength="200" 
+                               placeholder="Enter notification title...">
+                        <div class="character-counter mt-1">
+                            <span id="titleCounter">0</span>/200 characters
+                        </div>
+                    </div>
+                    
+                    <!-- Message Field -->
+                    <div class="mb-4">
+                        <label for="message" class="form-label fw-bold">
+                            <i class="fas fa-comment-alt"></i> Message *
+                        </label>
+                        <textarea class="form-control" id="message" name="message" rows="6" 
+                                  required maxlength="1000" 
+                                  placeholder="Enter your message here..."></textarea>
+                        <div class="character-counter mt-1">
+                            <span id="messageCounter">0</span>/1000 characters
+                        </div>
+                    </div>
+                    
+                    <!-- Priority Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-exclamation-triangle"></i> Priority Level *
+                        </label>
+                        <div class="priority-selector">
+                            <div class="priority-option">
+                                <input type="radio" id="priority_low" name="priority" value="low" checked>
+                                <label for="priority_low">
+                                    <i class="fas fa-arrow-down text-success"></i><br>
+                                    <strong>Low</strong><br>
+                                    <small>General info</small>
+                                </label>
+                            </div>
+                            <div class="priority-option">
+                                <input type="radio" id="priority_medium" name="priority" value="medium">
+                                <label for="priority_medium">
+                                    <i class="fas fa-minus text-warning"></i><br>
+                                    <strong>Medium</strong><br>
+                                    <small>Important</small>
+                                </label>
+                            </div>
+                            <div class="priority-option">
+                                <input type="radio" id="priority_high" name="priority" value="high">
+                                <label for="priority_high">
+                                    <i class="fas fa-arrow-up text-danger"></i><br>
+                                    <strong>High</strong><br>
+                                    <small>Urgent</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recipient Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-users"></i> Recipients *
+                        </label>
+                        <div class="recipient-type-selector">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="recipient_type" 
+                                       id="recipient_all" value="all" checked>
+                                <label class="form-check-label fw-semibold" for="recipient_all">
+                                    <i class="fas fa-globe"></i> All Users
+                                    <div class="small text-muted mt-1">Send to all students, teachers, and admins</div>
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="recipient_type" 
+                                       id="recipient_students" value="students">
+                                <label class="form-check-label fw-semibold" for="recipient_students">
+                                    <i class="fas fa-graduation-cap"></i> Students Only
+                                    <div class="small text-muted mt-1">Send to all students</div>
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="recipient_type" 
+                                       id="recipient_teachers" value="teachers">
+                                <label class="form-check-label fw-semibold" for="recipient_teachers">
+                                    <i class="fas fa-chalkboard-teacher"></i> Teachers Only
+                                    <div class="small text-muted mt-1">Send to all teachers</div>
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="recipient_type" 
+                                       id="recipient_specific" value="specific">
+                                <label class="form-check-label fw-semibold" for="recipient_specific">
+                                    <i class="fas fa-user-check"></i> Specific Users
+                                    <div class="small text-muted mt-1">Choose specific recipients</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Specific Recipients Selection (Hidden by default) -->
+                    <div class="mb-4" id="specificRecipientsDiv" style="display: none;">
+                        <label class="form-label fw-bold">Select Specific Recipients</label>
+                        <div class="specific-recipients">
+                            <!-- Students -->
+                            <div class="recipient-group">
+                                <h6><i class="fas fa-graduation-cap"></i> Students</h6>
+                                {% for student in users_by_type.students %}
+                                <div class="form-check user-checkbox">
+                                    <input class="form-check-input" type="checkbox" 
+                                           name="specific_recipients" value="{{ student.id }}" 
+                                           id="user_{{ student.id }}">
+                                    <label class="form-check-label" for="user_{{ student.id }}">
+                                        {{ student.get_full_name }} ({{ student.username }})
+                                        {% if student.email %}
+                                            <small class="text-muted">- {{ student.email }}</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted">No students found</p>
+                                {% endfor %}
+                            </div>
+                            
+                            <!-- Teachers -->
+                            <div class="recipient-group">
+                                <h6><i class="fas fa-chalkboard-teacher"></i> Teachers</h6>
+                                {% for teacher in users_by_type.teachers %}
+                                <div class="form-check user-checkbox">
+                                    <input class="form-check-input" type="checkbox" 
+                                           name="specific_recipients" value="{{ teacher.id }}" 
+                                           id="user_{{ teacher.id }}">
+                                    <label class="form-check-label" for="user_{{ teacher.id }}">
+                                        {{ teacher.get_full_name }} ({{ teacher.username }})
+                                        {% if teacher.email %}
+                                            <small class="text-muted">- {{ teacher.email }}</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted">No teachers found</p>
+                                {% endfor %}
+                            </div>
+                            
+                            <!-- Admins -->
+                            <div class="recipient-group">
+                                <h6><i class="fas fa-user-shield"></i> Administrators</h6>
+                                {% for admin in users_by_type.admins %}
+                                <div class="form-check user-checkbox">
+                                    <input class="form-check-input" type="checkbox" 
+                                           name="specific_recipients" value="{{ admin.id }}" 
+                                           id="user_{{ admin.id }}">
+                                    <label class="form-check-label" for="user_{{ admin.id }}">
+                                        {{ admin.get_full_name }} ({{ admin.username }})
+                                        {% if admin.email %}
+                                            <small class="text-muted">- {{ admin.email }}</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted">No administrators found</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Expiration Date (Optional) -->
+                    <div class="mb-4">
+                        <label for="expires_at" class="form-label fw-bold">
+                            <i class="fas fa-calendar-times"></i> Expiration Date (Optional)
+                        </label>
+                        <input type="datetime-local" class="form-control" id="expires_at" 
+                               name="expires_at">
+                        <div class="form-text">Leave empty for no expiration</div>
+                    </div>
+                    
+                    <!-- Preview Section -->
+                    <div class="preview-section" id="previewSection" style="display: none;">
+                        <h5 class="mb-3"><i class="fas fa-eye"></i> Preview</h5>
+                        <div class="preview-notification">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0" id="previewTitle">Notification Title</h6>
+                                <span class="badge" id="previewPriority">Low Priority</span>
+                            </div>
+                            <p class="mb-2" id="previewMessage">Your notification message will appear here...</p>
+                            <div class="small text-muted">
+                                <i class="fas fa-user"></i> {{ request.user.get_full_name }}
+                                <span class="mx-2">•</span>
+                                <i class="fas fa-users"></i> <span id="previewRecipients">All Users</span>
+                                <span class="mx-2">•</span>
+                                <i class="fas fa-clock"></i> Just now
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Submit Buttons -->
+                    <div class="d-flex justify-content-end gap-3 mt-4">
+                        <button type="button" class="btn btn-outline-secondary" id="previewBtn">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                        <button type="submit" class="btn btn-mitwpu-primary btn-lg">
+                            <i class="fas fa-paper-plane"></i> Send Notification
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('notificationForm');
+    const titleInput = document.getElementById('title');
+    const messageInput = document.getElementById('message');
+    const titleCounter = document.getElementById('titleCounter');
+    const messageCounter = document.getElementById('messageCounter');
+    const recipientRadios = document.querySelectorAll('input[name="recipient_type"]');
+    const specificDiv = document.getElementById('specificRecipientsDiv');
+    const previewBtn = document.getElementById('previewBtn');
+    const previewSection = document.getElementById('previewSection');
+    
+    // Character counters
+    function updateCounter(input, counter, maxLength) {
+        const currentLength = input.value.length;
+        counter.textContent = currentLength;
+        
+        counter.className = 'character-counter';
+        if (currentLength > maxLength * 0.9) {
+            counter.classList.add('danger');
+        } else if (currentLength > maxLength * 0.75) {
+            counter.classList.add('warning');
+        }
+    }
+    
+    titleInput.addEventListener('input', function() {
+        updateCounter(this, titleCounter, 200);
+    });
+    
+    messageInput.addEventListener('input', function() {
+        updateCounter(this, messageCounter, 1000);
+    });
+    
+    // Recipient type handling
+    recipientRadios.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            if (this.value === 'specific') {
+                specificDiv.style.display = 'block';
+            } else {
+                specificDiv.style.display = 'none';
+            }
+        });
+    });
+    
+    // Preview functionality
+    previewBtn.addEventListener('click', function() {
+        const title = titleInput.value || 'Notification Title';
+        const message = messageInput.value || 'Your notification message will appear here...';
+        const priority = document.querySelector('input[name="priority"]:checked').value;
+        const recipientType = document.querySelector('input[name="recipient_type"]:checked').value;
+        
+        // Update preview
+        document.getElementById('previewTitle').textContent = title;
+        document.getElementById('previewMessage').textContent = message;
+        
+        // Update priority badge
+        const priorityBadge = document.getElementById('previewPriority');
+        priorityBadge.className = 'badge';
+        
+        if (priority === 'high') {
+            priorityBadge.classList.add('bg-danger');
+            priorityBadge.textContent = 'High Priority';
+        } else if (priority === 'medium') {
+            priorityBadge.classList.add('bg-warning');
+            priorityBadge.textContent = 'Medium Priority';
+        } else {
+            priorityBadge.classList.add('bg-success');
+            priorityBadge.textContent = 'Low Priority';
+        }
+        
+        // Update recipients text
+        const recipientsMap = {
+            'all': 'All Users',
+            'students': 'Students Only',
+            'teachers': 'Teachers Only',
+            'specific': 'Specific Users'
+        };
+        document.getElementById('previewRecipients').textContent = recipientsMap[recipientType];
+        
+        // Show preview
+        previewSection.style.display = 'block';
+        previewSection.scrollIntoView({ behavior: 'smooth' });
+    });
+    
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const recipientType = document.querySelector('input[name="recipient_type"]:checked').value;
+        
+        if (recipientType === 'specific') {
+            const selectedRecipients = document.querySelectorAll('input[name="specific_recipients"]:checked');
+            if (selectedRecipients.length === 0) {
+                e.preventDefault();
+                alert('Please select at least one specific recipient.');
+                return;
+            }
+        }
+        
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        submitBtn.disabled = true;
+        
+        // Re-enable button after 10 seconds (fallback)
+        setTimeout(function() {
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        }, 10000);
+    });
+});
+</script>
+{% endblock %}

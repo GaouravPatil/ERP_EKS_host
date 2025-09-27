@@ -1,0 +1,516 @@
+{% extends 'base.html' %}
+{% load teacher_extras %}
+
+{% block title %}Timetable - MIT-WPU College ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+.timetable-container {
+    background: #f8f9fa;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.timetable-cell {
+    height: 85px;
+    border: 1px solid #e0e0e0;
+    position: relative;
+    transition: all 0.3s ease;
+    background: #ffffff;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.timetable-cell:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.timetable-cell.has-class {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    cursor: pointer;
+    border: 2px solid #5a6fd8;
+}
+
+.timetable-cell.has-class:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(90, 111, 216, 0.3);
+}
+
+.time-header {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    color: white;
+    font-weight: 600;
+    writing-mode: horizontal-tb;
+    text-align: center;
+    padding: 10px 5px;
+    min-width: 120px;
+}
+
+.day-header {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    padding: 15px 10px;
+}
+
+.class-info {
+    padding: 8px;
+    font-size: 0.85rem;
+    line-height: 1.3;
+}
+
+.course-code {
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.course-name {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    margin-bottom: 3px;
+}
+
+.class-detail {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.room-info {
+    position: absolute;
+    bottom: 3px;
+    right: 5px;
+    font-size: 0.65rem;
+    opacity: 0.9;
+    background: rgba(255,255,255,0.2);
+    padding: 2px 5px;
+    border-radius: 10px;
+}
+
+.empty-cell {
+    color: #6c757d;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.timetable-legend {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.break-cell {
+    background: linear-gradient(45deg, #ffc107, #fd7e14);
+    color: white;
+    font-weight: 600;
+}
+
+.lunch-cell {
+    background: linear-gradient(45deg, #dc3545, #c82333);
+    color: white;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .timetable-cell {
+        height: 70px;
+        font-size: 0.8rem;
+    }
+    .time-header {
+        min-width: 80px;
+        font-size: 0.8rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-calendar3"></i> My Timetable
+                    </h1>
+                    <p class="mb-0 text-muted">Weekly schedule for {{ teacher.user.get_full_name|default:teacher.user.username }}</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-success me-2" onclick="window.print()">
+                        <i class="bi bi-printer"></i> Print Schedule
+                    </button>
+                    <a href="{% url 'teachers:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Teacher Info Card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="mb-1">{{ teacher.user.get_full_name|default:teacher.user.username }}</h5>
+                    <p class="text-muted mb-0">
+                        <i class="bi bi-building"></i> {{ teacher.department.name }} | 
+                        <i class="bi bi-person-badge"></i> {{ teacher.designation }} | 
+                        <i class="bi bi-hash"></i> {{ teacher.employee_id }}
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span class="badge bg-primary fs-6">{{ timetable_entries.count }} Classes/Week</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timetable Grid -->
+    <div class="card shadow">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-table"></i> Weekly Schedule
+                </h5>
+                <div>
+                    <small class="text-muted">Academic Year 2024-25</small>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="timetable-container">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0" style="min-width: 900px;">
+                        <thead>
+                            <tr>
+                                <th class="time-header" style="width: 140px;">
+                                    <i class="bi bi-clock"></i><br>Time Slot
+                                </th>
+                                {% for day_key, day_name in days %}
+                                <th class="day-header">{{ day_name }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for time_slot in time_slots %}
+                            <tr>
+                                <td class="time-header">
+                                    <div class="text-center">
+                                        <strong>{{ time_slot.start_time|time:"g:i A" }}</strong>
+                                        <br>
+                                        <small>{{ time_slot.end_time|time:"g:i A" }}</small>
+                                    </div>
+                                </td>
+                                {% for day_key, day_name in days %}
+                                <td class="timetable-cell">
+                                    {% with time_key=time_slot.start_time|stringformat:"s"|add:"_"|add:time_slot.end_time|stringformat:"s" %}
+                                    {% if organized_timetable|get_item:day_key|get_item:time_key %}
+                                        {% with class=organized_timetable|get_item:day_key|get_item:time_key %}
+                                        <div class="timetable-cell has-class h-100 d-flex flex-column justify-content-center">
+                                            <div class="class-info">
+                                                <div class="course-code">{{ class.subject.course.code }}</div>
+                                                <div class="course-name">{{ class.subject.course.name|truncatechars:18 }}</div>
+                                                <div class="class-detail">
+                                                    <i class="bi bi-people"></i> {{ class.class_assigned.name }}
+                                                </div>
+                                            </div>
+                                            {% if class.room_number %}
+                                            <div class="room-info">
+                                                <i class="bi bi-geo-alt"></i> {{ class.room_number }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endwith %}
+                                    {% else %}
+                                        <!-- Check for standard break/lunch times -->
+                                        {% if time_slot.start_time|time:"H:i" == "11:00" and time_slot.end_time|time:"H:i" == "11:15" %}
+                                        <div class="break-cell h-100 d-flex align-items-center justify-content-center">
+                                            <div><i class="bi bi-cup-hot"></i><br>Break</div>
+                                        </div>
+                                        {% elif time_slot.start_time|time:"H:i" == "13:00" and time_slot.end_time|time:"H:i" == "14:00" %}
+                                        <div class="lunch-cell h-100 d-flex align-items-center justify-content-center">
+                                            <div><i class="bi bi-cup-straw"></i><br>Lunch</div>
+                                        </div>
+                                        {% else %}
+                                        <div class="empty-cell h-100 d-flex align-items-center justify-content-center">
+                                            <span>Free</span>
+                                        </div>
+                                        {% endif %}
+                                    {% endif %}
+                                    {% endwith %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- Enhanced Schedule Summary & Statistics -->
+    <div class="row mt-4">
+        <!-- Daily Schedule Summary -->
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-list-check"></i> Daily Schedule Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for day_key, day_name in days %}
+                        <div class="col-lg-6 col-md-12 mb-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="text-primary mb-0">
+                                        <i class="bi bi-calendar-day"></i> {{ day_name }}
+                                    </h6>
+                                    {% with day_classes=organized_timetable|get_item:day_key %}
+                                    <span class="badge bg-secondary">{{ day_classes|length }} classes</span>
+                                    {% endwith %}
+                                </div>
+                                
+                                {% with day_entries=timetable_entries|dictsort:"time_slot.start_time" %}
+                                {% for entry in day_entries %}
+                                    {% if entry.time_slot.day == day_key %}
+                                    <div class="border-start border-primary border-3 ps-3 mb-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong class="text-dark">{{ entry.subject.course.name }}</strong>
+                                                <br>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-people"></i> {{ entry.class_assigned.name }} - {{ entry.class_assigned.section }}
+                                                </small>
+                                                {% if entry.room_number %}
+                                                <br>
+                                                <small class="text-info">
+                                                    <i class="bi bi-geo-alt"></i> Room {{ entry.room_number }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-primary">{{ entry.time_slot.start_time|time:"g:i A" }}</span>
+                                                <br>
+                                                <small class="text-muted">{{ entry.subject.course.code }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                                {% endwith %}
+                                
+                                {% if not day_entries or not day_entries|length %}
+                                <div class="text-center py-3">
+                                    <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
+                                    <p class="text-muted mb-0 mt-2">No classes scheduled</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Statistics & Quick Actions -->
+        <div class="col-lg-4">
+            <!-- Weekly Statistics -->
+            <div class="card shadow mb-4">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-graph-up"></i> Weekly Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-primary mb-0">{{ timetable_entries.count }}</h4>
+                                <small class="text-muted">Total Classes</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success mb-0">
+                                {% if timetable_entries %}
+                                    {{ timetable_entries|length|floatformat:0 }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </h4>
+                            <small class="text-muted">Weekly Hours</small>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-2">Daily Distribution</h6>
+                        {% for day_key, day_name in days %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small">{{ day_name }}</span>
+                            {% with day_count=0 %}
+                                {% for entry in timetable_entries %}
+                                    {% if entry.time_slot.day == day_key %}
+                                        {% with day_count=day_count|add:1 %}{% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                                <span class="badge bg-secondary">
+                                    {% for entry in timetable_entries %}
+                                        {% if entry.time_slot.day == day_key %}{{ forloop.counter0|add:1 }}{% if not forloop.last %} {% endif %}{% endif %}
+                                    {% endfor %}
+                                    {% if not day_count %}0{% endif %} classes
+                                </span>
+                            {% endwith %}
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-2">Subject Distribution</h6>
+                        {% regroup timetable_entries by subject.course.name as subject_groups %}
+                        {% for subject in subject_groups %}
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small">{{ subject.grouper|truncatechars:20 }}</span>
+                            <span class="badge bg-info">{{ subject.list|length }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-lightning-fill"></i> Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'teachers:attendance' %}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-check-square"></i> Mark Attendance
+                        </a>
+                        <a href="{% url 'teachers:classes' %}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-people"></i> View Classes
+                        </a>
+                        <a href="{% url 'teachers:exams' %}" class="btn btn-outline-success btn-sm">
+                            <i class="bi bi-clipboard-check"></i> Manage Exams
+                        </a>
+                        <a href="{% url 'teachers:grades' %}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-award"></i> Manage Grades
+                        </a>
+                        <button class="btn btn-outline-info btn-sm" onclick="exportTimetable()">
+                            <i class="bi bi-download"></i> Export Schedule
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timetable Legend -->
+    <div class="timetable-legend">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h6 class="mb-2"><i class="bi bi-info-circle"></i> Legend</h6>
+                <div class="d-flex flex-wrap gap-3">
+                    <div class="d-flex align-items-center">
+                        <div class="me-2" style="width: 20px; height: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 3px;"></div>
+                        <small>Regular Class</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="me-2" style="width: 20px; height: 20px; background: linear-gradient(45deg, #ffc107, #fd7e14); border-radius: 3px;"></div>
+                        <small>Break Time</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="me-2" style="width: 20px; height: 20px; background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 3px;"></div>
+                        <small>Lunch Time</small>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="me-2" style="width: 20px; height: 20px; background: #ffffff; border: 1px solid #dee2e6; border-radius: 3px;"></div>
+                        <small>Free Period</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <small class="text-muted">
+                    Last updated: {% now "F j, Y g:i A" %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Add click functionality to timetable cells with classes
+document.querySelectorAll('.timetable-cell.has-class').forEach(function(cell) {
+    cell.addEventListener('click', function() {
+        // Extract class information for potential navigation
+        const courseCode = this.querySelector('.course-code')?.textContent;
+        const className = this.querySelector('.class-detail')?.textContent;
+        
+        // Show detailed information in a tooltip or navigate to class details
+        console.log('Class clicked:', courseCode, className);
+        
+        // You can add navigation to class details, attendance, or other features here
+        // Example: window.location.href = `/teachers/class-details/${classId}/`;
+    });
+});
+
+// Export timetable function
+function exportTimetable() {
+    // This would implement export functionality (PDF/Excel)
+    alert('Export functionality will be implemented. This will generate a PDF/Excel file of your timetable.');
+}
+
+// Print functionality enhancement
+function printTimetable() {
+    window.print();
+}
+
+// Responsive table handling
+function handleResponsiveTable() {
+    const table = document.querySelector('.table-responsive table');
+    const container = document.querySelector('.table-responsive');
+    
+    if (window.innerWidth < 768) {
+        // Add mobile-specific styles
+        table.classList.add('table-sm');
+    } else {
+        table.classList.remove('table-sm');
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    handleResponsiveTable();
+    
+    // Initialize tooltips for better UX
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+// Handle window resize
+window.addEventListener('resize', handleResponsiveTable);
+</script>
+{% endblock %}

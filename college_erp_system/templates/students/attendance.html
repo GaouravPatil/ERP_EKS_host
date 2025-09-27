@@ -1,79 +1,553 @@
 {% extends 'base.html' %}
+{% load student_extras %}
 
-{% block title %}My Attendance{% endblock %}
+{% block title %}My Attendance Record | {{ INSTITUTION.NAME }} Student Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attendance-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+    
+    .attendance-card {
+        background: white;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .attendance-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    
+    .subject-card {
+        border: none;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .subject-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .progress-custom {
+        height: 10px;
+        border-radius: 10px;
+        background-color: #f8f9fa;
+    }
+    
+    .progress-custom .progress-bar {
+        border-radius: 10px;
+        transition: width 1s ease-in-out;
+    }
+    
+    .progress-excellent {
+        background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
+    }
+    
+    .progress-good {
+        background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .progress-average {
+        background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .progress-poor {
+        background: linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%);
+    }
+    
+    .attendance-stats {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border-radius: 15px;
+        padding: 25px;
+        color: #333;
+    }
+    
+    .attendance-record {
+        border-left: 4px solid transparent;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .attendance-record.present {
+        border-left-color: #28a745;
+        background-color: rgba(40, 167, 69, 0.05);
+    }
+    
+    .attendance-record.absent {
+        border-left-color: #dc3545;
+        background-color: rgba(220, 53, 69, 0.05);
+    }
+    
+    .attendance-record:hover {
+        background-color: rgba(0,0,0,0.02);
+        transform: translateX(3px);
+    }
+    
+    .circular-progress {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 20px;
+    }
+    
+    .circular-progress svg {
+        width: 120px;
+        height: 120px;
+        transform: rotate(-90deg);
+    }
+    
+    .circular-progress circle {
+        fill: none;
+        stroke-width: 8;
+        stroke-linecap: round;
+    }
+    
+    .circular-progress .bg {
+        stroke: #f1f3f4;
+    }
+    
+    .circular-progress .progress {
+        stroke: #007bff;
+        stroke-dasharray: 377; /* 2 * π * 60 */
+        stroke-dashoffset: 377;
+        transition: stroke-dashoffset 1s ease-in-out;
+    }
+    
+    .circular-progress .percentage {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    @media (max-width: 768px) {
+        .attendance-header {
+            padding: 20px;
+        }
+        
+        .circular-progress {
+            width: 100px;
+            height: 100px;
+        }
+        
+        .circular-progress svg {
+            width: 100px;
+            height: 100px;
+        }
+        
+        .circular-progress .percentage {
+            font-size: 20px;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <h1 class="h2 mb-4">My Attendance</h1>
-    
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="attendance-header text-center">
+        <h1 class="h2 mb-2">
+            <i class="bi bi-check-circle-fill"></i> My Attendance Record
+        </h1>
+        <p class="mb-2">
+            <span class="badge bg-light text-dark px-3 py-2 me-2">
+                <i class="bi bi-person-badge"></i> {{ student.roll_number }}
+            </span>
+            <span class="badge bg-light text-dark px-3 py-2 me-2">
+                <i class="bi bi-mortarboard"></i> {{ student.student_class|default:"Not Assigned" }}
+            </span>
+            <span class="badge bg-light text-dark px-3 py-2">
+                <i class="bi bi-calendar3"></i> Academic Year {{ ACADEMIC_CONFIG.DEFAULT_ACADEMIC_YEAR }}
+            </span>
+        </p>
+        <p class="mb-0 opacity-75">
+            <i class="bi bi-info-circle"></i> 
+            Track your attendance across all subjects and maintain good academic standing
+        </p>
+    </div>
+
+    <!-- Overall Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-3">
+            <div class="attendance-stats text-center">
+                <div class="circular-progress">
+                    <svg>
+                        <circle class="bg" cx="60" cy="60" r="50"></circle>
+                        <circle class="progress" cx="60" cy="60" r="50" 
+                                style="stroke-dashoffset: calc(377 - (377 * {% if has_attendance_data %}{{ overall_percentage|default:0 }}{% else %}0{% endif %} / 100))"></circle>
+                    </svg>
+                    <div class="percentage">
+                        {% if has_attendance_data %}
+                            {{ overall_percentage }}%
+                        {% else %}
+                            --
+                        {% endif %}
+                    </div>
+                </div>
+                <h6 class="fw-bold">Overall Attendance</h6>
+                <p class="mb-0 small">
+                    {% if has_attendance_data %}
+                        {{ total_present_days }} out of {{ total_class_days }} classes
+                    {% else %}
+                        No classes held yet
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        
+        <div class="col-lg-9">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="attendance-card text-center p-3">
+                        <i class="bi bi-check-circle text-success" style="font-size: 2.5rem;"></i>
+                        <h4 class="text-success mt-2">
+                            {% if has_attendance_data %}
+                                {{ total_present_days }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted mb-0">Classes Attended</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="attendance-card text-center p-3">
+                        <i class="bi bi-x-circle text-danger" style="font-size: 2.5rem;"></i>
+                        <h4 class="text-danger mt-2">
+                            {% if has_attendance_data %}
+                                {{ total_absent_days }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted mb-0">Classes Missed</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="attendance-card text-center p-3">
+                        <i class="bi bi-calendar-check text-primary" style="font-size: 2.5rem;"></i>
+                        <h4 class="text-primary mt-2">
+                            {% if has_class_assigned %}
+                                {{ subject_attendance|length|default:0 }}
+                            {% else %}
+                                --
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted mb-0">Active Subjects</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="attendance-card text-center p-3">
+                        <i class="bi bi-graph-up text-info" style="font-size: 2.5rem;"></i>
+                        <h4 class="text-info mt-2">
+                            {% if subject_attendance %}
+                                {% for subject, data in subject_attendance.items %}
+                                    {% if data.percentage >= 75 %}Good{% elif data.percentage >= 60 %}Average{% else %}Poor{% endif %}
+                                    {% if forloop.first %}{% endif %}
+                                {% endfor %}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </h4>
+                        <p class="text-muted mb-0">Performance</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject-wise Attendance -->
     <div class="row">
-        <div class="col-md-4 mb-4">
-            <div class="card shadow">
+        <div class="col-lg-5 mb-4">
+            <div class="attendance-card">
                 <div class="card-header">
-                    <h6 class="mb-0">Subject-wise Attendance</h6>
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="bi bi-bar-chart-line"></i> Subject-wise Performance
+                    </h6>
                 </div>
                 <div class="card-body">
-                    {% for subject, data in subject_attendance.items %}
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between">
-                                <span>{{ subject.course.name }}</span>
-                                <strong>{{ data.percentage }}%</strong>
-                            </div>
-                            <div class="progress mt-1">
-                                <div class="progress-bar" style="width: {{ data.percentage }}%"></div>
-                            </div>
-                            <small class="text-muted">
-                                Present: {{ data.present }} | Absent: {{ data.absent }} | Total: {{ data.total }}
-                            </small>
+                    {% if not has_class_assigned %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-person-x" style="font-size: 3rem; color: #dee2e6;"></i>
+                            <p class="text-muted mt-3 mb-0">Not assigned to any class</p>
+                            <small class="text-secondary">Contact your administrator for class assignment</small>
+                        </div>
+                    {% elif not subject_attendance %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x" style="font-size: 3rem; color: #dee2e6;"></i>
+                            <p class="text-muted mt-3 mb-0">No subjects assigned yet</p>
+                            <small class="text-secondary">Subjects will appear here once assigned to your class</small>
+                        </div>
+                    {% else %}
+                        {% for subject, data in subject_attendance.items %}
+                            <div class="subject-card border p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <h6 class="mb-1 text-dark">{{ subject.course.name|truncatechars:25 }}</h6>
+                                        <small class="text-muted">{{ subject.course.code }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        {% if data.has_data %}
+                                            <h5 class="mb-0 
+                                                {% if data.percentage >= 85 %}text-primary
+                                                {% elif data.percentage >= 75 %}text-success
+                                                {% elif data.percentage >= 60 %}text-warning
+                                                {% else %}text-danger{% endif %}">
+                                                {{ data.percentage }}%
+                                            </h5>
+                                        {% else %}
+                                            <h5 class="mb-0 text-muted">--</h5>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                {% if data.has_data %}
+                                    <div class="progress progress-custom mb-2">
+                                        <div class="progress-bar
+                                            {% if data.percentage >= 85 %}progress-excellent
+                                            {% elif data.percentage >= 75 %}progress-good
+                                            {% elif data.percentage >= 60 %}progress-average
+                                            {% else %}progress-poor{% endif %}"
+                                            role="progressbar" style="width: {{ data.percentage }}%">
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between text-sm">
+                                        <small class="text-success">
+                                            <i class="bi bi-check-circle"></i> Present: {{ data.present }}
+                                        </small>
+                                        <small class="text-danger">
+                                            <i class="bi bi-x-circle"></i> Absent: {{ data.absent }}
+                                        </small>
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar"></i> Total: {{ data.total }}
+                                        </small>
+                                    </div>
+                                {% else %}
+                                    <div class="text-center py-2">
+                                        <small class="text-muted">No classes held yet</small>
+                                    </div>
+                                {% endif %}
+                            
+                            {% if data.percentage < 75 %}
+                                <div class="mt-2">
+                                    <small class="text-warning">
+                                        <i class="bi bi-exclamation-triangle"></i> 
+                                        Below 75% requirement
+                                    </small>
+                                </div>
+                            {% endif %}
                         </div>
                     {% empty %}
-                        <p class="text-muted">No attendance records found.</p>
+                        <div class="text-center py-4">
+                            <i class="bi bi-calendar-x text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3 mb-0">No attendance records found</p>
+                            <small class="text-muted">Contact your class teacher for more information</small>
+                        </div>
                     {% endfor %}
                 </div>
             </div>
         </div>
         
-        <div class="col-md-8">
-            <div class="card shadow">
+        <!-- Recent Attendance Records -->
+        <div class="col-lg-7 mb-4">
+            <div class="attendance-card">
                 <div class="card-header">
-                    <h6 class="mb-0">Recent Attendance Records</h6>
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="bi bi-clock-history"></i> Recent Attendance Records
+                    </h6>
+                </div>
+                <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                    {% for record in attendance_records|slice:":50" %}
+                        <div class="attendance-record {% if record.is_present %}present{% else %}absent{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        {% if record.is_present %}
+                                            <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                                        {% else %}
+                                            <i class="bi bi-x-circle-fill text-danger fs-4"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1">{{ record.subject.course.name }}</h6>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <small class="text-muted">
+                                                <i class="bi bi-calendar3"></i> {{ record.date|date:"M d, Y" }}
+                                            </small>
+                                            <small class="text-muted">
+                                                <i class="bi bi-book"></i> {{ record.subject.course.code }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    {% if record.is_present %}
+                                        <span class="badge bg-success">Present</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Absent</span>
+                                    {% endif %}
+                                    {% if record.remarks %}
+                                        <br><small class="text-muted">{{ record.remarks|truncatechars:30 }}</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-journal-x text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3 mb-0">No attendance records available</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Guidelines -->
+    <div class="row">
+        <div class="col-12">
+            <div class="attendance-card">
+                <div class="card-header">
+                    <h6 class="m-0 fw-bold text-primary">
+                        <i class="bi bi-info-circle"></i> Attendance Guidelines & Information
+                    </h6>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Subject</th>
-                                    <th>Status</th>
-                                    <th>Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for record in attendance_records|slice:":20" %}
-                                <tr>
-                                    <td>{{ record.date }}</td>
-                                    <td>{{ record.subject.course.name }}</td>
-                                    <td>
-                                        {% if record.is_present %}
-                                            <span class="badge bg-success">Present</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Absent</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ record.remarks|default:"-" }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted">No attendance records found.</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success mb-3">
+                                <i class="bi bi-check-square"></i> Attendance Requirements
+                            </h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="bi bi-arrow-right text-primary"></i> 
+                                    Minimum {{ ACADEMIC_CONFIG.MINIMUM_ATTENDANCE_PERCENTAGE }}% attendance required for exam eligibility
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-arrow-right text-primary"></i> 
+                                    {{ ACADEMIC_CONFIG.EXCELLENT_ATTENDANCE_PERCENTAGE }}%+ attendance earns academic excellence recognition
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-arrow-right text-primary"></i> 
+                                    Medical leave requires proper documentation
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-arrow-right text-primary"></i> 
+                                    Regular attendance improves academic performance
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-info mb-3">
+                                <i class="bi bi-lightbulb"></i> Tips for Better Attendance
+                            </h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i class="bi bi-star text-warning"></i> 
+                                    Plan your schedule to avoid conflicts
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-star text-warning"></i> 
+                                    Inform teachers about genuine absences
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-star text-warning"></i> 
+                                    Keep track of your attendance regularly
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-star text-warning"></i> 
+                                    Contact class representatives for missed content
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="text-center">
+                        <p class="text-muted mb-0">
+                            <i class="bi bi-question-circle"></i> 
+                            Questions about your attendance? Contact your Class Teacher or Academic Office.
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Enhanced attendance page functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate progress bars
+    setTimeout(function() {
+        const progressBars = document.querySelectorAll('.progress-bar');
+        progressBars.forEach(bar => {
+            const width = bar.style.width;
+            bar.style.width = '0%';
+            setTimeout(() => {
+                bar.style.transition = 'width 1s ease-in-out';
+                bar.style.width = width;
+            }, 100);
+        });
+    }, 500);
+    
+    // Animate circular progress
+    const circularProgress = document.querySelector('.circular-progress .progress');
+    if (circularProgress) {
+        const percentage = document.querySelector('.circular-progress .percentage').textContent;
+        const percentageValue = parseInt(percentage);
+        const circumference = 2 * Math.PI * 50; // radius = 50
+        const offset = circumference - (percentageValue / 100) * circumference;
+        
+        setTimeout(() => {
+            circularProgress.style.strokeDashoffset = offset;
+        }, 1000);
+    }
+    
+    // Add hover effects to attendance records
+    const attendanceRecords = document.querySelectorAll('.attendance-record');
+    attendanceRecords.forEach(record => {
+        record.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = 'rgba(0,123,255,0.05)';
+        });
+        
+        record.addEventListener('mouseleave', function() {
+            if (this.classList.contains('present')) {
+                this.style.backgroundColor = 'rgba(40, 167, 69, 0.05)';
+            } else {
+                this.style.backgroundColor = 'rgba(220, 53, 69, 0.05)';
+            }
+        });
+    });
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
 {% endblock %}

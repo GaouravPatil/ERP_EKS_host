@@ -2,14 +2,16 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 
+
+def get_user_type_choices():
+    """Get user type choices from database"""
+    from college_erp.models import Choice
+    return Choice.get_choices_for_category('user_types')
+
+
 class User(AbstractUser):
-    USER_TYPE_CHOICES = (
-        ('student', 'Student'),
-        ('teacher', 'Teacher'),
-        ('admin', 'Administrator'),
-    )
-    
-    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES)
+    # Dynamic choices will be loaded from database
+    user_type = models.CharField(max_length=10, choices=get_user_type_choices)
     phone_regex = RegexValidator(
         regex=r'^\+?1?\d{9,15}$',
         message="Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed."

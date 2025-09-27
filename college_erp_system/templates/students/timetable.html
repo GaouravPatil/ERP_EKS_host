@@ -1,62 +1,529 @@
 {% extends 'base.html' %}
+{% load student_extras %}
 
-{% block title %}My Timetable{% endblock %}
+{% block title %}My Class Timetable | MIT-WPU Student Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timetable-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+    
+    .timetable-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    .timetable-table thead th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+        text-align: center;
+        padding: 15px 10px;
+        border: none;
+        position: relative;
+    }
+    
+    .timetable-table thead th:first-child {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        width: 120px;
+    }
+    
+    .timetable-table tbody td {
+        padding: 0;
+        vertical-align: top;
+        border: 1px solid #e9ecef;
+        height: 80px;
+        position: relative;
+    }
+    
+    .time-slot {
+        background: #f8f9fa;
+        font-weight: 600;
+        text-align: center;
+        color: #495057;
+        border-right: 2px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 80px;
+    }
+    
+    .class-cell {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin: 2px;
+        border-radius: 8px;
+        padding: 8px;
+        height: 76px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .class-cell:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+    
+    .class-cell .subject-name {
+        font-weight: bold;
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+    
+    .class-cell .subject-code {
+        font-size: 0.75rem;
+        opacity: 0.9;
+        margin-bottom: 4px;
+    }
+    
+    .class-cell .room-info {
+        font-size: 0.7rem;
+        opacity: 0.8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+    
+    .break-cell {
+        background: linear-gradient(45deg, #ffc107, #fd7e14);
+        color: #333;
+        margin: 2px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        height: 76px;
+    }
+    
+    .lunch-cell {
+        background: linear-gradient(45deg, #dc3545, #c82333);
+        color: white;
+        margin: 2px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        height: 76px;
+    }
+    
+    .empty-cell {
+        background: #f8f9fa;
+        margin: 2px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+        font-style: italic;
+        height: 76px;
+    }
+    
+    .stats-card {
+        background: white;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    
+    .subject-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-top: 20px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+    }
+    
+    @media (max-width: 768px) {
+        .timetable-table {
+            font-size: 0.8rem;
+        }
+        
+        .class-cell {
+            height: 60px;
+            padding: 4px;
+        }
+        
+        .class-cell .subject-name {
+            font-size: 0.8rem;
+        }
+        
+        .class-cell .subject-code,
+        .class-cell .room-info {
+            font-size: 0.65rem;
+        }
+        
+        .time-slot {
+            font-size: 0.8rem;
+            min-height: 60px;
+        }
+    }
+    
+    @media print {
+        .btn, .card-header {
+            display: none !important;
+        }
+        
+        .timetable-table {
+            box-shadow: none;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <h1 class="h2 mb-4">My Timetable</h1>
-    
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="timetable-header text-center">
+        <h1 class="h2 mb-2">
+            <i class="bi bi-calendar-week"></i> My Class Timetable
+        </h1>
+        {% if student.student_class %}
+            <p class="mb-2">
+                <span class="badge bg-light text-dark px-3 py-2 me-2">
+                    <i class="bi bi-mortarboard"></i> {{ student.student_class.name }} - {{ student.student_class.section }}
+                </span>
+                <span class="badge bg-light text-dark px-3 py-2 me-2">
+                    <i class="bi bi-building"></i> {{ student.department.name }}
+                </span>
+                <span class="badge bg-light text-dark px-3 py-2">
+                    <i class="bi bi-calendar3"></i> Academic Year {{ student.student_class.academic_year|default:"2024-25" }}
+                </span>
+            </p>
+            <p class="mb-0 opacity-75">
+                <i class="bi bi-info-circle"></i> 
+                Weekly schedule for {{ student.user.get_full_name }} ({{ student.roll_number }})
+            </p>
+        {% endif %}
+    </div>
+
     {% if student.student_class %}
-        <div class="card shadow">
-            <div class="card-header">
-                <h5 class="mb-0">{{ student.student_class }} - Academic Year {{ student.student_class.academic_year }}</h5>
-            </div>
-            <div class="card-body">
+        <!-- Timetable Grid -->
+        <div class="card stats-card mb-4">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead class="table-dark">
+                    <table class="table timetable-table mb-0">
+                        <thead>
                             <tr>
                                 <th>Time</th>
-                                {% for day in days %}
-                                    <th class="text-center">{{ day|title }}</th>
-                                {% endfor %}
+                                <th>Monday</th>
+                                <th>Tuesday</th>
+                                <th>Wednesday</th>
+                                <th>Thursday</th>
+                                <th>Friday</th>
+                                <th>Saturday</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- This is a simplified version - in a real implementation, 
-                                 you'd need to organize by time slots -->
-                            {% if organized_timetable %}
+                            <!-- Time slots from 8 AM to 5 PM -->
+                            {% comment %}Standard time slots{% endcomment %}
+                            {% for hour in "8,9,10,11,12,13,14,15,16,17"|make_list %}
                                 <tr>
-                                    <td><strong>Class Schedule</strong></td>
-                                    {% for day in days %}
-                                        <td class="text-center">
-                                            {% for schedule in organized_timetable|lookup:day %}
-                                                <div class="mb-2">
-                                                    <strong>{{ schedule.subject.course.name }}</strong><br>
-                                                    <small>{{ schedule.time_slot.start_time }} - {{ schedule.time_slot.end_time }}</small><br>
-                                                    <small class="text-muted">Room: {{ schedule.room_number|default:"TBA" }}</small>
+                                    {% if hour == "8" %}
+                                        <td class="time-slot">8:00 AM<br><small>9:00 AM</small></td>
+                                    {% elif hour == "9" %}
+                                        <td class="time-slot">9:00 AM<br><small>10:00 AM</small></td>
+                                    {% elif hour == "10" %}
+                                        <td class="time-slot">10:00 AM<br><small>10:30 AM</small></td>
+                                    {% elif hour == "11" %}
+                                        <td class="time-slot">10:30 AM<br><small>11:30 AM</small></td>
+                                    {% elif hour == "12" %}
+                                        <td class="time-slot">11:30 AM<br><small>12:30 PM</small></td>
+                                    {% elif hour == "13" %}
+                                        <td class="time-slot">12:30 PM<br><small>1:30 PM</small></td>
+                                    {% elif hour == "14" %}
+                                        <td class="time-slot">1:30 PM<br><small>2:30 PM</small></td>
+                                    {% elif hour == "15" %}
+                                        <td class="time-slot">2:30 PM<br><small>3:00 PM</small></td>
+                                    {% elif hour == "16" %}
+                                        <td class="time-slot">3:00 PM<br><small>4:00 PM</small></td>
+                                    {% elif hour == "17" %}
+                                        <td class="time-slot">4:00 PM<br><small>5:00 PM</small></td>
+                                    {% endif %}
+                                    
+                                    <!-- Days of the week -->
+                                    {% for day in "monday,tuesday,wednesday,thursday,friday,saturday"|make_list %}
+                                        <td>
+                                            {% if hour == "10" %}
+                                                <!-- Morning Break -->
+                                                <div class="break-cell">
+                                                    <div>
+                                                        <i class="bi bi-cup-hot"></i><br>
+                                                        <small>Break</small>
+                                                    </div>
                                                 </div>
-                                            {% empty %}
-                                                <span class="text-muted">No classes</span>
-                                            {% endfor %}
+                                            {% elif hour == "13" %}
+                                                <!-- Lunch Break -->
+                                                <div class="lunch-cell">
+                                                    <div>
+                                                        <i class="bi bi-cup-straw"></i><br>
+                                                        <small>Lunch</small>
+                                                    </div>
+                                                </div>
+                                            {% elif hour == "15" %}
+                                                <!-- Afternoon Break -->
+                                                <div class="break-cell">
+                                                    <div>
+                                                        <i class="bi bi-cup-hot"></i><br>
+                                                        <small>Break</small>
+                                                    </div>
+                                                </div>
+                                            {% else %}
+                                                <!-- Check for actual classes -->
+                                                {% with organized_timetable|lookup:day as day_schedules %}
+                                                    {% for schedule in day_schedules %}
+                                                        {% if schedule.time_slot.start_time.hour|stringformat:"s" == hour %}
+                                                            <div class="class-cell" data-bs-toggle="tooltip" 
+                                                                 title="Teacher: {{ schedule.subject.teacher.get_full_name|default:'TBA' }}">
+                                                                <div class="subject-name">{{ schedule.subject.course.name|truncatechars:20 }}</div>
+                                                                <div class="subject-code">{{ schedule.subject.course.code }}</div>
+                                                                <div class="room-info">
+                                                                    <i class="bi bi-geo-alt"></i>
+                                                                    {{ schedule.room_number|default:"TBA" }}
+                                                                </div>
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                {% endwith %}
+                                            {% endif %}
                                         </td>
                                     {% endfor %}
                                 </tr>
-                            {% else %}
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted">No timetable available</td>
-                                </tr>
-                            {% endif %}
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
+
+        <!-- Weekly Schedule Summary -->
+        <div class="row">
+            <!-- Schedule Overview -->
+            <div class="col-lg-8">
+                <div class="card stats-card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-calendar-check"></i> Weekly Schedule Overview
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for day, classes in organized_timetable.items %}
+                            <div class="col-lg-4 col-md-6 mb-4">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="text-primary mb-0">
+                                            <i class="bi bi-calendar-day"></i> {{ day|title }}
+                                        </h6>
+                                        <span class="badge bg-secondary">{{ classes|length }} classes</span>
+                                    </div>
+                                    
+                                    {% for class in classes %}
+                                    <div class="border-start border-primary border-3 ps-3 mb-2">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong class="text-dark">{{ class.subject.course.name|truncatechars:25 }}</strong>
+                                                <br>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-person"></i> {{ class.subject.teacher.get_full_name|default:"TBA" }}
+                                                </small>
+                                                {% if class.room_number %}
+                                                <br>
+                                                <small class="text-info">
+                                                    <i class="bi bi-geo-alt"></i> Room {{ class.room_number }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-primary">{{ class.time_slot.start_time|time:"g:i A" }}</span>
+                                                <br>
+                                                <small class="text-muted">{{ class.subject.course.code }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-center py-3">
+                                        <i class="bi bi-calendar-x text-muted" style="font-size: 2rem;"></i>
+                                        <p class="text-muted mb-0 mt-2">No classes scheduled</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats & Actions -->
+            <div class="col-lg-4">
+                <div class="card stats-card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="bi bi-graph-up"></i> Weekly Statistics
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center mb-3">
+                            <div class="col-6">
+                                <div class="border-end">
+                                    <h4 class="text-primary mb-0">
+                                        {{ timetable_entries|length|default:0 }}
+                                    </h4>
+                                    <small class="text-muted">Total Classes</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-success mb-0">{{ active_days }}</h4>
+                                <small class="text-muted">Teaching Days</small>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <h6 class="text-muted mb-2">Daily Distribution</h6>
+                            {% for day, classes in organized_timetable.items %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small">{{ day|title }}</span>
+                                <span class="badge bg-secondary">{{ classes|length }} classes</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timetable Legend -->
+        <div class="card stats-card mt-4">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="mb-2"><i class="bi bi-info-circle"></i> Legend</h6>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="d-flex align-items-center">
+                                <div class="legend-color me-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                                <small>Regular Class</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="legend-color me-2" style="background: linear-gradient(45deg, #ffc107, #fd7e14);"></div>
+                                <small>Break Time</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="legend-color me-2" style="background: linear-gradient(45deg, #dc3545, #c82333);"></div>
+                                <small>Lunch Time</small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="legend-color me-2" style="background: #f8f9fa; border: 1px solid #dee2e6;"></div>
+                                <small>Free Period</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <small class="text-muted">
+                            Last updated: {% now "F j, Y g:i A" %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     {% else %}
-        <div class="alert alert-warning">
-            <i class="bi bi-exclamation-triangle"></i>
-            You are not assigned to any class. Please contact the administration.
+        <!-- Not Assigned to Class -->
+        <div class="card stats-card text-center py-5">
+            <div class="card-body">
+                <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 4rem;"></i>
+                <h4 class="mt-3">No Class Assigned</h4>
+                <p class="text-muted">
+                    You are not currently assigned to any class. Please contact the administration office 
+                    to get your class assignment updated.
+                </p>
+                <div class="mt-4">
+                    <a href="{% url 'students:dashboard' %}" class="btn btn-primary me-2">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                    <a href="#" class="btn btn-outline-primary">
+                        <i class="bi bi-telephone"></i> Contact Admin
+                    </a>
+                </div>
+            </div>
         </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Enhanced timetable functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Add click functionality to class cells
+    document.querySelectorAll('.class-cell').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+            const subjectName = this.querySelector('.subject-name')?.textContent;
+            const subjectCode = this.querySelector('.subject-code')?.textContent;
+            const roomInfo = this.querySelector('.room-info')?.textContent;
+            
+            // Show class details
+            alert(`Subject: ${subjectName}\nCode: ${subjectCode}\nLocation: ${roomInfo}`);
+        });
+    });
+    
+    // Print functionality
+    window.printTimetable = function() {
+        window.print();
+    };
+    
+    // Responsive table handling
+    function handleResponsiveTable() {
+        const table = document.querySelector('.timetable-table');
+        if (window.innerWidth < 768) {
+            table.classList.add('table-sm');
+        } else {
+            table.classList.remove('table-sm');
+        }
+    }
+    
+    handleResponsiveTable();
+    window.addEventListener('resize', handleResponsiveTable);
+});
+</script>
 {% endblock %}

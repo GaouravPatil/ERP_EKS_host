@@ -1,0 +1,382 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ notification.title }} - Notification Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-detail-header {
+        background: linear-gradient(135deg, var(--mitwpu-primary), var(--mitwpu-secondary));
+        color: white;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+    
+    .priority-badge-large {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    
+    .stats-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    
+    .progress-ring {
+        width: 120px;
+        height: 120px;
+        position: relative;
+    }
+    
+    .progress-ring svg {
+        transform: rotate(-90deg);
+    }
+    
+    .progress-ring-circle {
+        fill: transparent;
+        stroke: #e0e0e0;
+        stroke-width: 8;
+    }
+    
+    .progress-ring-progress {
+        fill: transparent;
+        stroke: var(--mitwpu-primary);
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 283;
+        stroke-dashoffset: 283;
+        transition: stroke-dashoffset 0.5s ease-in-out;
+    }
+    
+    .progress-ring-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: var(--mitwpu-primary);
+    }
+    
+    .recipient-table {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    .read-status-icon {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+    
+    .read-status-read {
+        background-color: var(--mitwpu-success);
+    }
+    
+    .read-status-unread {
+        background-color: var(--mitwpu-danger);
+    }
+    
+    .notification-content {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        border-left: 4px solid var(--mitwpu-primary);
+    }
+    
+    .expired-overlay {
+        background-color: rgba(0,0,0,0.05);
+        border-radius: 10px;
+        position: relative;
+    }
+    
+    .expired-overlay::before {
+        content: "EXPIRED";
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: var(--mitwpu-danger);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Back Navigation -->
+    <div class="mb-4">
+        <a href="{% url 'administration:notifications' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Notifications
+        </a>
+    </div>
+
+    <!-- Notification Header -->
+    <div class="notification-detail-header p-4 {% if notification.expires_at and notification.expires_at <= now %}expired-overlay{% endif %}">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-2">{{ notification.title }}</h2>
+                <p class="mb-3 opacity-75">{{ notification.message }}</p>
+                
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                    {% if notification.priority == 'high' %}
+                        <span class="badge bg-danger priority-badge-large">
+                            <i class="fas fa-exclamation-triangle"></i> High Priority
+                        </span>
+                    {% elif notification.priority == 'medium' %}
+                        <span class="badge bg-warning priority-badge-large">
+                            <i class="fas fa-minus"></i> Medium Priority
+                        </span>
+                    {% else %}
+                        <span class="badge bg-success priority-badge-large">
+                            <i class="fas fa-check"></i> Low Priority
+                        </span>
+                    {% endif %}
+                    
+                    {% if not notification.is_active %}
+                        <span class="badge bg-secondary priority-badge-large">
+                            <i class="fas fa-pause"></i> Inactive
+                        </span>
+                    {% endif %}
+                    
+                    {% if notification.expires_at and notification.expires_at <= now %}
+                        <span class="badge bg-dark priority-badge-large">
+                            <i class="fas fa-clock"></i> Expired
+                        </span>
+                    {% endif %}
+                </div>
+                
+                <div class="row text-sm">
+                    <div class="col-md-6">
+                        <i class="fas fa-user"></i> <strong>Sent by:</strong> {{ notification.sender.get_full_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <i class="fas fa-calendar"></i> <strong>Created:</strong> {{ notification.created_at|date:"M d, Y H:i" }}
+                    </div>
+                    {% if notification.expires_at %}
+                    <div class="col-md-6 mt-2">
+                        <i class="fas fa-hourglass-end"></i> <strong>Expires:</strong> {{ notification.expires_at|date:"M d, Y H:i" }}
+                    </div>
+                    {% endif %}
+                    <div class="col-md-6 mt-2">
+                        <i class="fas fa-users"></i> <strong>Recipients:</strong>
+                        {% if notification.recipient_type == 'all' %}
+                            All Users
+                        {% elif notification.recipient_type == 'students' %}
+                            Students Only
+                        {% elif notification.recipient_type == 'teachers' %}
+                            Teachers Only
+                        {% else %}
+                            Specific Users
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 text-center">
+                <!-- Progress Ring -->
+                <div class="progress-ring mx-auto">
+                    <svg width="120" height="120">
+                        <circle class="progress-ring-circle" cx="60" cy="60" r="45"></circle>
+                        <circle class="progress-ring-progress" cx="60" cy="60" r="45"></circle>
+                    </svg>
+                    <div class="progress-ring-text">{{ read_percentage }}%</div>
+                </div>
+                <p class="mb-0 mt-2 opacity-75">Read Rate</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stats-card p-4 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h3 class="text-mitwpu-primary mb-0">{{ total_recipients }}</h3>
+                        <p class="text-muted mb-0">Total Recipients</p>
+                    </div>
+                    <i class="fas fa-users fa-2x text-mitwpu-primary opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stats-card p-4 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h3 class="text-success mb-0">{{ read_count }}</h3>
+                        <p class="text-muted mb-0">Read</p>
+                    </div>
+                    <i class="fas fa-eye fa-2x text-success opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stats-card p-4 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h3 class="text-danger mb-0">{{ unread_count }}</h3>
+                        <p class="text-muted mb-0">Unread</p>
+                    </div>
+                    <i class="fas fa-eye-slash fa-2x text-danger opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stats-card p-4 h-100">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h3 class="text-info mb-0">{{ read_percentage }}%</h3>
+                        <p class="text-muted mb-0">Read Rate</p>
+                    </div>
+                    <i class="fas fa-chart-pie fa-2x text-info opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex gap-3">
+                <form method="post" class="d-inline" 
+                      action="{% url 'administration:toggle_notification_status' notification.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-warning">
+                        {% if notification.is_active %}
+                            <i class="fas fa-pause"></i> Deactivate Notification
+                        {% else %}
+                            <i class="fas fa-play"></i> Activate Notification
+                        {% endif %}
+                    </button>
+                </form>
+                
+                <form method="post" class="d-inline" 
+                      action="{% url 'administration:delete_notification' notification.id %}"
+                      onsubmit="return confirm('Are you sure you want to delete this notification? This action cannot be undone.');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-trash"></i> Delete Notification
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recipients Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Recipients & Read Status
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="recipient-table">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Name</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Type</th>
+                                    <th>Read At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for recipient_info in recipient_data %}
+                                <tr>
+                                    <td>
+                                        {% if recipient_info.is_read %}
+                                            <span class="read-status-icon read-status-read"></span>
+                                            <span class="text-success">Read</span>
+                                        {% else %}
+                                            <span class="read-status-icon read-status-unread"></span>
+                                            <span class="text-danger">Unread</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ recipient_info.user.get_full_name }}</td>
+                                    <td>{{ recipient_info.user.username }}</td>
+                                    <td>
+                                        {% if recipient_info.user.email %}
+                                            {{ recipient_info.user.email }}
+                                        {% else %}
+                                            <span class="text-muted">No email</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if recipient_info.user.user_type == 'student' %}
+                                            <span class="badge bg-primary">
+                                                <i class="fas fa-graduation-cap"></i> Student
+                                            </span>
+                                        {% elif recipient_info.user.user_type == 'teacher' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-chalkboard-teacher"></i> Teacher
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-user-shield"></i> Admin
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if recipient_info.read_at %}
+                                            {{ recipient_info.read_at|date:"M d, Y H:i" }}
+                                        {% else %}
+                                            <span class="text-muted">Not read</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="fas fa-users-slash fa-2x mb-2"></i><br>
+                                        No recipients found
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate progress ring
+    const progressRing = document.querySelector('.progress-ring-progress');
+    const percentage = parseFloat('{{ read_percentage }}');
+    const offset = 283 - (283 * percentage) / 100;
+    
+    setTimeout(function() {
+        progressRing.style.strokeDashoffset = offset + 'px';
+    }, 500);
+    
+    // Auto-refresh every 30 seconds
+    setTimeout(function() {
+        location.reload();
+    }, 30000);
+});
+</script>
+{% endblock %}

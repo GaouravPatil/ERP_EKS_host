@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Notifications - MIT-WPU Administration{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-card {
+        border-left: 4px solid var(--mitwpu-primary);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    
+    .notification-card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .priority-high {
+        border-left-color: var(--mitwpu-danger) !important;
+    }
+    
+    .priority-medium {
+        border-left-color: var(--mitwpu-warning) !important;
+    }
+    
+    .priority-low {
+        border-left-color: var(--mitwpu-success) !important;
+    }
+    
+    .notification-stats .stat-card {
+        background: linear-gradient(135deg, var(--mitwpu-primary), var(--mitwpu-secondary));
+        color: white;
+        border-radius: 10px;
+        transition: transform 0.3s ease;
+    }
+    
+    .notification-stats .stat-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .expired-notification {
+        opacity: 0.6;
+        background-color: #f8f9fa;
+    }
+    
+    .filter-tabs .nav-link.active {
+        background-color: var(--mitwpu-primary);
+        color: white;
+        border-color: var(--mitwpu-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-mitwpu-primary">
+                        <i class="fas fa-bell"></i> Notifications Management
+                    </h2>
+                    <p class="text-muted">Manage and track all system notifications</p>
+                </div>
+                <div>
+                    <a href="{% url 'administration:send_notification' %}" class="btn btn-mitwpu-primary">
+                        <i class="fas fa-plus"></i> Send Notification
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4 notification-stats">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card p-4">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h4 class="mb-0">{{ stats.total }}</h4>
+                        <p class="mb-0">Total Notifications</p>
+                    </div>
+                    <i class="fas fa-bell-slash fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card p-4" style="background: linear-gradient(135deg, var(--mitwpu-success), #20c997);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h4 class="mb-0">{{ stats.active }}</h4>
+                        <p class="mb-0">Active</p>
+                    </div>
+                    <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card p-4" style="background: linear-gradient(135deg, var(--mitwpu-danger), #e74c3c);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h4 class="mb-0">{{ stats.expired }}</h4>
+                        <p class="mb-0">Expired</p>
+                    </div>
+                    <i class="fas fa-times-circle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card p-4" style="background: linear-gradient(135deg, var(--mitwpu-warning), #f39c12);">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h4 class="mb-0">{{ stats.this_week }}</h4>
+                        <p class="mb-0">This Week</p>
+                    </div>
+                    <i class="fas fa-calendar-week fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-pills filter-tabs">
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == 'all' %}active{% endif %}" 
+                       href="?status=all">
+                        All Notifications
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == 'active' %}active{% endif %}" 
+                       href="?status=active">
+                        Active
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == 'expired' %}active{% endif %}" 
+                       href="?status=expired">
+                        Expired
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="row">
+        <div class="col-12">
+            {% if notifications %}
+                {% for notification in notifications %}
+                <div class="card notification-card mb-3 priority-{{ notification.priority }} 
+                            {% if notification.expires_at and notification.expires_at <= now %}expired-notification{% endif %}">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h5 class="card-title mb-2">
+                                    {{ notification.title }}
+                                    {% if notification.priority == 'high' %}
+                                        <span class="badge bg-danger ms-2">High Priority</span>
+                                    {% elif notification.priority == 'medium' %}
+                                        <span class="badge bg-warning ms-2">Medium</span>
+                                    {% else %}
+                                        <span class="badge bg-success ms-2">Low</span>
+                                    {% endif %}
+                                    
+                                    {% if not notification.is_active %}
+                                        <span class="badge bg-secondary ms-2">Inactive</span>
+                                    {% endif %}
+                                    
+                                    {% if notification.expires_at and notification.expires_at <= now %}
+                                        <span class="badge bg-dark ms-2">Expired</span>
+                                    {% endif %}
+                                </h5>
+                                
+                                <p class="card-text text-muted mb-2">
+                                    {{ notification.message|truncatewords:20 }}
+                                </p>
+                                
+                                <div class="small text-muted">
+                                    <i class="fas fa-user"></i> {{ notification.sender.get_full_name }}
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-users"></i> 
+                                    {% if notification.recipient_type == 'all' %}
+                                        All Users
+                                    {% elif notification.recipient_type == 'students' %}
+                                        Students Only
+                                    {% elif notification.recipient_type == 'teachers' %}
+                                        Teachers Only
+                                    {% else %}
+                                        Specific Users
+                                    {% endif %}
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-calendar"></i> {{ notification.created_at|date:"M d, Y H:i" }}
+                                    
+                                    {% if notification.expires_at %}
+                                        <span class="mx-2">•</span>
+                                        <i class="fas fa-hourglass-end"></i> 
+                                        Expires: {{ notification.expires_at|date:"M d, Y H:i" }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4 text-end">
+                                <div class="btn-group mb-2" role="group">
+                                    <a href="{% url 'administration:notification_detail' notification.id %}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye"></i> Details
+                                    </a>
+                                    
+                                    <form method="post" class="d-inline" 
+                                          action="{% url 'administration:toggle_notification_status' notification.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-warning btn-sm">
+                                            {% if notification.is_active %}
+                                                <i class="fas fa-pause"></i> Deactivate
+                                            {% else %}
+                                                <i class="fas fa-play"></i> Activate
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                    
+                                    <form method="post" class="d-inline" 
+                                          action="{% url 'administration:delete_notification' notification.id %}"
+                                          onsubmit="return confirm('Are you sure you want to delete this notification?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                
+                                <div class="small text-muted">
+                                    Recipients: {{ notification.get_recipients.count }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                
+                <!-- Pagination -->
+                {% if notifications.has_other_pages %}
+                <nav aria-label="Notifications pagination" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if notifications.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1&status={{ status_filter }}">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ notifications.previous_page_number }}&status={{ status_filter }}">Previous</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ notifications.number }} of {{ notifications.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if notifications.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ notifications.next_page_number }}&status={{ status_filter }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ notifications.paginator.num_pages }}&status={{ status_filter }}">Last</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-bell-slash fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No Notifications Found</h4>
+                        <p class="text-muted">You haven't sent any notifications yet.</p>
+                        <a href="{% url 'administration:send_notification' %}" class="btn btn-mitwpu-primary">
+                            <i class="fas fa-plus"></i> Send Your First Notification
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh every 30 seconds
+    setTimeout(function() {
+        location.reload();
+    }, 30000);
+</script>
+{% endblock %}

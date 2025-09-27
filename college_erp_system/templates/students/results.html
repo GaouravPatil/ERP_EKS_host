@@ -1,13 +1,437 @@
 {% extends 'base.html' %}
+{% load student_extras %}
 
-{% block title %}Results{% endblock %}
+{% block title %}My Exam Results | MIT-WPU Student Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .results-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+    }
+    
+    .results-card {
+        background: white;
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .results-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    
+    .result-item {
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .result-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: linear-gradient(180deg, #007bff 0%, #0056b3 100%);
+    }
+    
+    .result-item:hover {
+        border-color: #007bff;
+        box-shadow: 0 5px 15px rgba(0,123,255,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .result-item.excellent::before {
+        background: linear-gradient(180deg, #28a745 0%, #155724 100%);
+    }
+    
+    .result-item.good::before {
+        background: linear-gradient(180deg, #17a2b8 0%, #0c5460 100%);
+    }
+    
+    .result-item.average::before {
+        background: linear-gradient(180deg, #ffc107 0%, #d39e00 100%);
+    }
+    
+    .result-item.poor::before {
+        background: linear-gradient(180deg, #dc3545 0%, #721c24 100%);
+    }
+    
+    .grade-badge {
+        font-size: 1.1em;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+    }
+    
+    .grade-a {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+    
+    .grade-b {
+        background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+        color: white;
+    }
+    
+    .grade-c {
+        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        color: #333;
+    }
+    
+    .grade-d {
+        background: linear-gradient(135deg, #fd7e14 0%, #dc3545 100%);
+        color: white;
+    }
+    
+    .grade-f {
+        background: linear-gradient(135deg, #dc3545 0%, #6f42c1 100%);
+        color: white;
+    }
+    
+    .performance-meter {
+        height: 20px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .performance-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 1s ease-in-out;
+        background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #28a745 100%);
+    }
+    
+    .semester-summary {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+    }
+    
+    .overall-stats {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        border-radius: 15px;
+        padding: 25px;
+        color: #333;
+    }
+    
+    .subject-performance {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+        padding: 15px;
+        border-radius: 10px;
+        background: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+    
+    .subject-performance:hover {
+        background: #e9ecef;
+        transform: translateX(5px);
+    }
+    
+    .no-results {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    @media (max-width: 768px) {
+        .results-header {
+            padding: 20px;
+        }
+        
+        .result-item {
+            padding: 15px;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <h1 class="h2 mb-4">Results</h1>
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i>
-        Results section coming soon!
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="results-header text-center">
+        <h1 class="h2 mb-2">
+            <i class="bi bi-trophy-fill"></i> My Exam Results
+        </h1>
+        <p class="mb-2">
+            <span class="badge bg-light text-dark px-3 py-2 me-2">
+                <i class="bi bi-person-badge"></i> {{ student.roll_number }}
+            </span>
+            <span class="badge bg-light text-dark px-3 py-2 me-2">
+                <i class="bi bi-mortarboard"></i> {{ student.student_class|default:"Not Assigned" }}
+            </span>
+            <span class="badge bg-light text-dark px-3 py-2">
+                <i class="bi bi-calendar3"></i> Academic Year 2024-25
+            </span>
+        </p>
+        <p class="mb-0 opacity-75">
+            <i class="bi bi-info-circle"></i> 
+            View your published exam results and track your academic progress
+        </p>
     </div>
+
+    {% if results %}
+        <!-- Overall Performance Summary -->
+        <div class="row mb-4">
+            <div class="col-lg-4">
+                <div class="semester-summary text-center">
+                    <h3 class="mb-2">{{ overall_percentage }}%</h3>
+                    <h6 class="mb-3">Overall Performance</h6>
+                    <div class="performance-meter mb-3">
+                        <div class="performance-fill" style="width: {{ overall_percentage }}%"></div>
+                    </div>
+                    <p class="mb-0 small opacity-75">
+                        {% if overall_percentage >= 85 %}
+                            Excellent Performance! Keep it up!
+                        {% elif overall_percentage >= 75 %}
+                            Good Performance! Room for improvement.
+                        {% elif overall_percentage >= 60 %}
+                            Average Performance. Work harder.
+                        {% elif overall_percentage >= 40 %}
+                            Below Average. Need significant improvement.
+                        {% else %}
+                            Poor Performance. Seek academic help.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-8">
+                <div class="overall-stats">
+                    <h6 class="mb-3 fw-bold">
+                        <i class="bi bi-graph-up-arrow"></i> Academic Statistics
+                    </h6>
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h4 class="text-primary">{{ results.count }}</h4>
+                            <p class="mb-0 small">Total Exams</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-success">{{ passed_count|default:0 }}</h4>
+                            <p class="mb-0 small">Passed</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-warning">{{ distinctions_count|default:0 }}</h4>
+                            <p class="mb-0 small">Distinctions</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-info">{{ total_obtained|default:0 }}/{{ total_possible|default:0 }}</h4>
+                            <p class="mb-0 small">Total Marks</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Results -->
+        <div class="row">
+            <div class="col-12">
+                <div class="results-card">
+                    <div class="card-header">
+                        <h6 class="m-0 fw-bold text-primary">
+                            <i class="bi bi-list-check"></i> Detailed Results
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% for result in results %}
+                            <div class="result-item 
+                                {% if result.percentage >= 85 %}excellent
+                                {% elif result.percentage >= 75 %}good
+                                {% elif result.percentage >= 60 %}average
+                                {% else %}poor{% endif %}">
+                                
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h5 class="mb-1 text-dark">{{ result.exam.subject.course.name }}</h5>
+                                        <p class="mb-2 text-muted">
+                                            <i class="bi bi-book"></i> {{ result.exam.subject.course.code }} |
+                                            <i class="bi bi-calendar-event"></i> {{ result.exam.date|date:"M d, Y" }}
+                                        </p>
+                                        <p class="mb-0 small text-muted">
+                                            <i class="bi bi-clock"></i> {{ result.exam.get_exam_type_display }} |
+                                            <i class="bi bi-hourglass-split"></i> {{ result.exam.duration }} mins
+                                        </p>
+                                    </div>
+                                    
+                                    <div class="col-md-3 text-center">
+                                        <div class="mb-2">
+                                            <span class="grade-badge 
+                                                {% if result.percentage >= 85 %}grade-a
+                                                {% elif result.percentage >= 75 %}grade-b
+                                                {% elif result.percentage >= 60 %}grade-c
+                                                {% elif result.percentage >= 40 %}grade-d
+                                                {% else %}grade-f{% endif %}">
+                                                {% if result.percentage >= 85 %}A+
+                                                {% elif result.percentage >= 80 %}A
+                                                {% elif result.percentage >= 75 %}B+
+                                                {% elif result.percentage >= 70 %}B
+                                                {% elif result.percentage >= 60 %}C
+                                                {% elif result.percentage >= 50 %}D
+                                                {% else %}F{% endif %}
+                                            </span>
+                                        </div>
+                                        <p class="mb-0 small text-muted">Grade</p>
+                                    </div>
+                                    
+                                    <div class="col-md-3 text-end">
+                                        <h4 class="mb-1 
+                                            {% if result.percentage >= 75 %}text-success
+                                            {% elif result.percentage >= 60 %}text-warning
+                                            {% else %}text-danger{% endif %}">
+                                            {{ result.marks_obtained|default:0 }}/{{ result.exam.total_marks }}
+                                        </h4>
+                                        <p class="mb-2 
+                                            {% if result.percentage >= 75 %}text-success
+                                            {% elif result.percentage >= 60 %}text-warning
+                                            {% else %}text-danger{% endif %} fw-bold">
+                                            {{ result.percentage }}%
+                                        </p>
+                                        
+                                        <div class="performance-meter">
+                                            <div class="performance-fill" style="width: {{ result.percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {% if result.remarks %}
+                                <hr class="my-3">
+                                <div class="alert alert-info mb-0 py-2">
+                                    <i class="bi bi-chat-square-text"></i>
+                                    <strong>Teacher's Remarks:</strong> {{ result.remarks }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subject-wise Performance Chart -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="results-card">
+                    <div class="card-header">
+                        <h6 class="m-0 fw-bold text-primary">
+                            <i class="bi bi-bar-chart-line"></i> Subject-wise Performance Analysis
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% regroup results by exam.subject.course.name as subject_groups %}
+                        {% for subject_group in subject_groups %}
+                            <div class="subject-performance">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ subject_group.grouper }}</h6>
+                                    <small class="text-muted">{{ subject_group.list|length }} exam(s)</small>
+                                </div>
+                                <div class="text-center me-3">
+                                    {% with avg_percentage=subject_group.list.0.percentage %}
+                                    <span class="grade-badge 
+                                        {% if avg_percentage >= 85 %}grade-a
+                                        {% elif avg_percentage >= 75 %}grade-b
+                                        {% elif avg_percentage >= 60 %}grade-c
+                                        {% elif avg_percentage >= 40 %}grade-d
+                                        {% else %}grade-f{% endif %}">
+                                        {% if avg_percentage >= 85 %}A+
+                                        {% elif avg_percentage >= 80 %}A
+                                        {% elif avg_percentage >= 75 %}B+
+                                        {% elif avg_percentage >= 70 %}B
+                                        {% elif avg_percentage >= 60 %}C
+                                        {% elif avg_percentage >= 50 %}D
+                                        {% else %}F{% endif %}
+                                    </span>
+                                    {% endwith %}
+                                </div>
+                                <div class="text-end">
+                                    {% with avg_percentage=subject_group.list.0.percentage %}
+                                    <h5 class="mb-0 
+                                        {% if avg_percentage >= 75 %}text-success
+                                        {% elif avg_percentage >= 60 %}text-warning
+                                        {% else %}text-danger{% endif %}">
+                                        {{ avg_percentage }}%
+                                    </h5>
+                                    {% endwith %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- No Results Available -->
+        <div class="results-card">
+            <div class="card-body no-results">
+                <i class="bi bi-clipboard-x" style="font-size: 5rem; color: #dee2e6;"></i>
+                <h4 class="mt-4 mb-3">No Results Published Yet</h4>
+                <p class="text-muted mb-4">
+                    Your exam results will appear here once they are published by your teachers.
+                    <br>Check back regularly or contact your teachers for updates.
+                </p>
+                <div class="mt-4">
+                    <a href="{% url 'students:exams' %}" class="btn btn-primary me-2">
+                        <i class="bi bi-calendar-event"></i> View Upcoming Exams
+                    </a>
+                    <a href="{% url 'students:dashboard' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate performance meters
+    setTimeout(function() {
+        const performanceFills = document.querySelectorAll('.performance-fill');
+        performanceFills.forEach(fill => {
+            const width = fill.style.width;
+            fill.style.width = '0%';
+            setTimeout(() => {
+                fill.style.width = width;
+            }, 300);
+        });
+    }, 500);
+    
+    // Add hover effects to result items
+    const resultItems = document.querySelectorAll('.result-item');
+    resultItems.forEach(item => {
+        item.addEventListener('mouseenter', function() {
+            this.style.borderColor = '#007bff';
+        });
+        
+        item.addEventListener('mouseleave', function() {
+            this.style.borderColor = '#e9ecef';
+        });
+    });
+    
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
 {% endblock %}

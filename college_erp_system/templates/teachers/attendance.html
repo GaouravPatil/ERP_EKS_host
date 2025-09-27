@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+
+{% block title %}Attendance Management - MIT-WPU College ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+.attendance-card {
+    transition: transform 0.2s ease-in-out;
+}
+.attendance-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15)!important;
+}
+.student-row {
+    transition: background-color 0.2s;
+}
+.student-row:hover {
+    background-color: #f8f9fa;
+}
+.attendance-checkbox {
+    transform: scale(1.2);
+}
+.present-row {
+    background-color: #d4edda;
+}
+.absent-row {
+    background-color: #f8d7da;
+}
+.subject-selector {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0">Attendance Management</h1>
+                    <p class="mb-0 text-muted">Mark and manage student attendance</p>
+                </div>
+                <div>
+                    <a href="{% url 'teachers:dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject Selection -->
+    <div class="card shadow mb-4">
+        <div class="card-header subject-selector">
+            <h5 class="card-title mb-0">
+                <i class="bi bi-funnel"></i> Select Subject & Date
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row align-items-end">
+                <div class="col-md-5 mb-3">
+                    <label for="subject" class="form-label">Subject</label>
+                    <select name="subject" id="subject" class="form-select" required>
+                        <option value="">Choose a subject...</option>
+                        {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if subject == selected_subject %}selected{% endif %}>
+                            {{ subject.course.name }} - {{ subject.class_assigned }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" name="date" id="date" class="form-control" 
+                           value="{{ selected_date }}" max="{% now 'Y-m-d' %}" required>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Load Students
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if selected_subject %}
+    <!-- Attendance Form -->
+    <div class="card shadow">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-check-square"></i> Mark Attendance
+                    </h5>
+                    <small class="text-muted">
+                        {{ selected_subject.course.name }} - {{ selected_subject.class_assigned }} | {{ selected_date|date:"F j, Y" }}
+                    </small>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-success btn-sm me-2" onclick="markAllPresent()">
+                        <i class="bi bi-check-all"></i> Mark All Present
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="markAllAbsent()">
+                        <i class="bi bi-x-lg"></i> Mark All Absent
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if students_attendance %}
+            <form id="attendanceForm" method="post" action="{% url 'teachers:mark_attendance' %}">
+                {% csrf_token %}
+                <input type="hidden" name="subject_id" value="{{ selected_subject.id }}">
+                <input type="hidden" name="date" value="{{ selected_date }}">
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="5%">#</th>
+                                <th width="15%">Roll Number</th>
+                                <th width="35%">Student Name</th>
+                                <th width="20%">Email</th>
+                                <th width="15%">Status</th>
+                                <th width="10%">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in students_attendance %}
+                            <tr class="student-row" id="row-{{ item.student.user.id }}">
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ item.student.roll_number }}</span>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                             style="width: 35px; height: 35px;">
+                                            <i class="bi bi-person-fill text-white"></i>
+                                        </div>
+                                        <div>
+                                            <strong>{{ item.student.user.get_full_name|default:item.student.user.username }}</strong>
+                                            <br>
+                                            <small class="text-muted">{{ item.student.user.username }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ item.student.user.email }}</small>
+                                </td>
+                                <td>
+                                    <span class="attendance-status badge" id="status-{{ item.student.user.id }}">
+                                        {% if item.is_present %}
+                                            <span class="badge bg-success">Present</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Absent</span>
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input attendance-checkbox" 
+                                               type="checkbox" 
+                                               name="attendance" 
+                                               value="{{ item.student.user.id }}"
+                                               id="attendance-{{ item.student.user.id }}"
+                                               {% if item.is_present %}checked{% endif %}
+                                               onchange="updateAttendanceStatus({{ item.student.user.id }})">
+                                        <label class="form-check-label" for="attendance-{{ item.student.user.id }}">
+                                            Present
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div class="text-muted">
+                        <strong>Total Students:</strong> {{ students_attendance|length }}
+                        <span class="ms-3">
+                            <span class="badge bg-success me-1" id="presentCount">0</span> Present
+                        </span>
+                        <span class="ms-2">
+                            <span class="badge bg-danger me-1" id="absentCount">0</span> Absent
+                        </span>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle"></i> Save Attendance
+                    </button>
+                </div>
+            </form>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 4rem;"></i>
+                <h5 class="text-muted mt-3">No students found</h5>
+                <p class="text-muted">No students are enrolled in this class or all students are inactive.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <!-- No Subject Selected -->
+    <div class="card shadow">
+        <div class="card-body text-center py-5">
+            <i class="bi bi-book text-muted" style="font-size: 4rem;"></i>
+            <h4 class="text-muted mt-3">Select a Subject to Continue</h4>
+            <p class="text-muted">Please select a subject and date to load student list for attendance marking.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Update attendance status display
+function updateAttendanceStatus(studentId) {
+    const checkbox = document.getElementById(`attendance-${studentId}`);
+    const statusBadge = document.getElementById(`status-${studentId}`);
+    const row = document.getElementById(`row-${studentId}`);
+    
+    if (checkbox.checked) {
+        statusBadge.innerHTML = '<span class="badge bg-success">Present</span>';
+        row.classList.remove('absent-row');
+        row.classList.add('present-row');
+    } else {
+        statusBadge.innerHTML = '<span class="badge bg-danger">Absent</span>';
+        row.classList.remove('present-row');
+        row.classList.add('absent-row');
+    }
+    
+    updateCounts();
+}
+
+// Mark all students present
+function markAllPresent() {
+    const checkboxes = document.querySelectorAll('input[name="attendance"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+        updateAttendanceStatus(checkbox.value);
+    });
+}
+
+// Mark all students absent
+function markAllAbsent() {
+    const checkboxes = document.querySelectorAll('input[name="attendance"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+        updateAttendanceStatus(checkbox.value);
+    });
+}
+
+// Update present/absent counts
+function updateCounts() {
+    const checkboxes = document.querySelectorAll('input[name="attendance"]');
+    let presentCount = 0;
+    let absentCount = 0;
+    
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            presentCount++;
+        } else {
+            absentCount++;
+        }
+    });
+    
+    document.getElementById('presentCount').textContent = presentCount;
+    document.getElementById('absentCount').textContent = absentCount;
+}
+
+// Form submission with AJAX
+document.getElementById('attendanceForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitButton = this.querySelector('button[type="submit"]');
+    
+    // Show loading state
+    submitButton.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+    submitButton.disabled = true;
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            this.insertBefore(alertDiv, this.firstChild);
+            
+            // Auto dismiss after 3 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        } else {
+            // Show error message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                Error: ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            this.insertBefore(alertDiv, this.firstChild);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            An error occurred while saving attendance.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        this.insertBefore(alertDiv, this.firstChild);
+    })
+    .finally(() => {
+        // Reset button state
+        submitButton.innerHTML = '<i class="bi bi-check-circle"></i> Save Attendance';
+        submitButton.disabled = false;
+    });
+});
+
+// Initialize counts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateCounts();
+    
+    // Initialize row colors based on current attendance
+    const checkboxes = document.querySelectorAll('input[name="attendance"]');
+    checkboxes.forEach(checkbox => {
+        updateAttendanceStatus(checkbox.value);
+    });
+});
+</script>
+{% endblock %}

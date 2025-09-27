@@ -1,13 +1,305 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Profile{% endblock %}
+{% block title %}Profile - MIT-WPU College ERP{% endblock %}
 
 {% block content %}
-<div class="py-4">
-    <h1 class="h2 mb-4">Profile</h1>
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i>
-        Profile management features coming soon!
+<div class="fade-in">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3">
+        <h1 class="h2 text-gradient-primary">
+            <i class="bi bi-person-circle me-2"></i>My Profile
+        </h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <div class="btn-group me-2">
+                <a href="{% url 'accounts:change_password' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-shield-lock me-1"></i>Change Password
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Completion Progress -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="card-title mb-1">Profile Completion</h5>
+                    <p class="text-muted mb-2">Complete your profile to get the best experience</p>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-gradient-primary" role="progressbar" 
+                             style="width: {{ profile_completion }}%" 
+                             aria-valuenow="{{ profile_completion }}" aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ completed_fields }}/{{ total_fields }} fields completed</small>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="stat-icon text-primary" style="font-size: 2.5rem;">
+                        {% if profile_completion >= 100 %}
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        {% elif profile_completion >= 50 %}
+                            <i class="bi bi-clock-fill text-warning"></i>
+                        {% else %}
+                            <i class="bi bi-exclamation-circle-fill text-danger"></i>
+                        {% endif %}
+                    </div>
+                    <h4 class="text-primary">{{ profile_completion }}%</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Information -->
+    <div class="row">
+        <!-- Profile Picture & Quick Info -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <div class="position-relative d-inline-block">
+                        {% if user.profile_picture %}
+                            <img src="{{ user.profile_picture.url }}" alt="Profile Picture" 
+                                 class="rounded-circle border border-3 border-primary" 
+                                 width="150" height="150" style="object-fit: cover;">
+                        {% else %}
+                            <div class="rounded-circle bg-gradient-primary d-flex align-items-center justify-content-center" 
+                                 style="width: 150px; height: 150px;">
+                                <i class="bi bi-person-fill text-white" style="font-size: 4rem;"></i>
+                            </div>
+                        {% endif %}
+                        <button type="button" class="btn btn-sm btn-primary position-absolute bottom-0 end-0 rounded-circle" 
+                                data-bs-toggle="modal" data-bs-target="#profilePictureModal" 
+                                style="width: 35px; height: 35px;">
+                            <i class="bi bi-camera-fill"></i>
+                        </button>
+                    </div>
+                    
+                    <h4 class="mt-3 mb-1">{{ user.get_full_name|default:user.username }}</h4>
+                    <p class="text-muted mb-2">
+                        <span class="badge bg-primary">{{ user.get_user_type_display|default:"Administrator" }}</span>
+                    </p>
+                    <p class="text-muted small">
+                        <i class="bi bi-calendar3 me-1"></i>
+                        Joined {{ user.date_joined|date:"F Y" }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-graph-up me-2"></i>Account Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end pe-3">
+                                <h4 class="text-primary mb-0">
+                                    {{ user.date_joined|timesince|truncatewords:1 }}
+                                </h4>
+                                <small class="text-muted">Since Joined</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="mb-0">
+                                {% if user.is_active %}
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                {% else %}
+                                    <i class="bi bi-x-circle-fill text-danger"></i>
+                                {% endif %}
+                            </h4>
+                            <small class="text-muted">
+                                {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Form -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-gear me-2"></i>Personal Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">
+                                    <i class="bi bi-person me-1"></i>First Name
+                                </label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                       value="{{ user.first_name }}" placeholder="Enter first name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">
+                                    <i class="bi bi-person me-1"></i>Last Name
+                                </label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                       value="{{ user.last_name }}" placeholder="Enter last name">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">
+                                    <i class="bi bi-at me-1"></i>Username
+                                </label>
+                                <input type="text" class="form-control" id="username" 
+                                       value="{{ user.username }}" readonly 
+                                       style="background-color: #f8f9fa;">
+                                <small class="text-muted">Username cannot be changed</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="bi bi-envelope me-1"></i>Email Address
+                                </label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ user.email }}" placeholder="Enter email address">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone_number" class="form-label">
+                                    <i class="bi bi-telephone me-1"></i>Phone Number
+                                </label>
+                                <input type="tel" class="form-control" id="phone_number" name="phone_number" 
+                                       value="{{ user.phone_number }}" placeholder="Enter phone number">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="date_of_birth" class="form-label">
+                                    <i class="bi bi-calendar-date me-1"></i>Date of Birth
+                                </label>
+                                <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" 
+                                       value="{% if user.date_of_birth %}{{ user.date_of_birth|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label">
+                                <i class="bi bi-geo-alt me-1"></i>Address
+                            </label>
+                            <textarea class="form-control" id="address" name="address" rows="3" 
+                                    placeholder="Enter your address">{{ user.address }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-shield-check me-1"></i>User Type
+                                </label>
+                                <input type="text" class="form-control" 
+                                       value="{{ user.get_user_type_display|default:'Administrator' }}" 
+                                       readonly style="background-color: #f8f9fa;">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-calendar-plus me-1"></i>Account Created
+                                </label>
+                                <input type="text" class="form-control" 
+                                       value="{{ user.date_joined|date:'F d, Y' }}" 
+                                       readonly style="background-color: #f8f9fa;">
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="button" class="btn btn-outline-secondary me-2" onclick="window.history.back()">
+                                <i class="bi bi-arrow-left me-1"></i>Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i>Update Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Profile Picture Modal -->
+<div class="modal fade" id="profilePictureModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-camera me-2"></i>Update Profile Picture
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="profile_picture" class="form-label">Choose new profile picture</label>
+                        <input type="file" class="form-control" id="profile_picture" name="profile_picture" 
+                               accept="image/*" onchange="previewImage(this)">
+                    </div>
+                    <div id="imagePreview" class="text-center" style="display: none;">
+                        <img id="preview" class="rounded border" style="max-width: 200px; max-height: 200px;">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload me-1"></i>Upload Picture
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function previewImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const emailInput = document.getElementById('email');
+    const phoneInput = document.getElementById('phone_number');
+    
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        // Email validation
+        if (emailInput.value && !emailInput.value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            emailInput.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            emailInput.classList.remove('is-invalid');
+        }
+        
+        // Phone validation
+        if (phoneInput.value && !phoneInput.value.match(/^[\+]?[\d\s\-\(\)]{10,}$/)) {
+            phoneInput.classList.add('is-invalid');
+            isValid = false;
+        } else {
+            phoneInput.classList.remove('is-invalid');
+        }
+        
+        if (!isValid) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
 {% endblock %}
