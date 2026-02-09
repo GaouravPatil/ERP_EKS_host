@@ -69,59 +69,84 @@ class Choice(models.Model):
 # Helper functions to get dynamic choices
 def get_user_type_choices():
     """Get user type choices from database"""
-    return Choice.get_choices_for_category('user_types')
-
+    try:
+        return Choice.get_choices_for_category('user_types')
+    except Exception:
+        return []
 
 def get_notification_type_choices():
     """Get notification type choices from database"""
-    return Choice.get_choices_for_category('notification_types')
-
+    try:
+        return Choice.get_choices_for_category('notification_types')
+    except Exception:
+        return []
 
 def get_qualification_choices():
     """Get qualification choices from database"""
-    return Choice.get_choices_for_category('qualifications')
-
+    try:
+        return Choice.get_choices_for_category('qualifications')
+    except Exception:
+        return []
 
 def get_employment_type_choices():
     """Get employment type choices from database"""
-    return Choice.get_choices_for_category('employment_types')
-
+    try:
+        return Choice.get_choices_for_category('employment_types')
+    except Exception:
+        return []
 
 def get_semester_choices():
     """Get semester choices from database"""
-    return Choice.get_choices_for_category('semesters')
-
+    try:
+        return Choice.get_choices_for_category('semesters')
+    except Exception:
+        return []
 
 def get_fee_type_choices():
     """Get fee type choices from database"""
-    return Choice.get_choices_for_category('fee_types')
-
+    try:
+        return Choice.get_choices_for_category('fee_types')
+    except Exception:
+        return []
 
 def get_payment_status_choices():
     """Get payment status choices from database"""
-    return Choice.get_choices_for_category('payment_status')
-
+    try:
+        return Choice.get_choices_for_category('payment_status')
+    except Exception:
+        return []
 
 def get_exam_type_choices():
     """Get exam type choices from database"""
-    return Choice.get_choices_for_category('exam_types')
-
+    try:
+        return Choice.get_choices_for_category('exam_types')
+    except Exception:
+        return []
 
 def get_priority_choices():
     """Get priority choices from database"""
-    return Choice.get_choices_for_category('priority_levels')
-
+    try:
+        return Choice.get_choices_for_category('priority_levels')
+    except Exception:
+        return []
 
 def get_recipient_type_choices():
     """Get recipient type choices from database"""
-    return Choice.get_choices_for_category('recipient_types')
-
+    try:
+        return Choice.get_choices_for_category('recipient_types')
+    except Exception:
+        return []
 
 def get_day_choices():
     """Get day choices from database"""
-    return Choice.get_choices_for_category('weekdays')
-
+    try:
+        return Choice.get_choices_for_category('weekdays')
+    except Exception:
+        return []
 
 def get_target_audience_choices():
     """Get target audience choices from database"""
-    return Choice.get_choices_for_category('target_audience')
+    try:
+        return Choice.get_choices_for_category('target_audience')
+    except Exception:
+        return []

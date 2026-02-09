@@ -5,8 +5,12 @@ from django.core.validators import RegexValidator
 
 def get_user_type_choices():
     """Get user type choices from database"""
-    from college_erp.models import Choice
-    return Choice.get_choices_for_category('user_types')
+    try:
+        from college_erp.models import Choice
+        return Choice.get_choices_for_category('user_types')
+    except Exception:
+        # Return an empty list if the database is not ready
+        return []
 
 
 class User(AbstractUser):

@@ -5,14 +5,21 @@ from academics.models import Class, Department
 
 def get_notification_type_choices():
     """Get notification type choices from database"""
-    from college_erp.models import Choice
-    return Choice.get_choices_for_category('notification_types')
+    try:
+        from college_erp.models import Choice
+        return Choice.get_choices_for_category('notification_types')
+    except Exception:
+        return []
 
 
 def get_target_audience_choices():
     """Get target audience choices from database"""
-    from college_erp.models import Choice
-    return Choice.get_choices_for_category('target_audience')
+    try:
+        from college_erp.models import Choice
+        return Choice.get_choices_for_category('target_audience')
+    except Exception:
+        return []
+
 
 class Student(models.Model):
     user = models.OneToOneField(

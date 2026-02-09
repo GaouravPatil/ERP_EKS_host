@@ -5,14 +5,20 @@ from academics.models import Department
 
 def get_qualification_choices():
     """Get qualification choices from database"""
-    from college_erp.models import Choice
-    return Choice.get_choices_for_category('qualifications')
+    try:
+        from college_erp.models import Choice
+        return Choice.get_choices_for_category('qualifications')
+    except Exception:
+        return []
 
 
 def get_employment_type_choices():
     """Get employment type choices from database"""
-    from college_erp.models import Choice
-    return Choice.get_choices_for_category('employment_types')
+    try:
+        from college_erp.models import Choice
+        return Choice.get_choices_for_category('employment_types')
+    except Exception:
+        return []
 
 
 class Teacher(models.Model):
